@@ -1,4 +1,4 @@
-const CACHE_NAME = "mc-money-v3";
+const CACHE_NAME = "mc-money-v4";
 const CORE_ASSETS = ["./", "./manifest.webmanifest", "./favicon.svg"];
 
 self.addEventListener("install", event => {
