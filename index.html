@@ -39,7 +39,15 @@ const SUPABASE_URL = "https://exvstdoaytddxcsqukff.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_srJu9lZgLEZoFQaTYXiKDA_Hd6185js";
 const AUTH_REDIRECT_URL = "https://michealsizemore1.github.io/chatgpt-michael-cynthia-money/";
 const supabaseClient = window.supabase
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: location.protocol !== "file:",
+        // Avoid a stale browser-tab lock leaving sign-in stuck on "Please wait".
+        lock: async (_name, _acquireTimeout, operation) => await operation(),
+      },
+    })
   : null;
 const VALID_TABS = ["dashboard", "budgets", "transactions", "subscriptions", "cashflow", "goals", "accounts", "ai", "settings"];
 
@@ -4159,20 +4167,29 @@ function AuthScreen() {
       return;
     }
     setBusy(true); setError(""); setMessage("");
-    const result = mode === "signup"
-      ? await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: AUTH_REDIRECT_URL },
-        })
-      : await supabaseClient.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (result.error) {
-      setError(result.error.message);
-      return;
-    }
-    if (mode === "signup" && !result.data.session) {
-      setMessage("Check your email, confirm your account, then return here to sign in.");
+    try {
+      const authRequest = mode === "signup"
+        ? supabaseClient.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: AUTH_REDIRECT_URL },
+          })
+        : supabaseClient.auth.signInWithPassword({ email, password });
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Sign-in timed out. Close other open budget tabs, check your connection, and try again.")), 15000)
+      );
+      const result = await Promise.race([authRequest, timeout]);
+      if (result.error) {
+        setError(result.error.message);
+        return;
+      }
+      if (mode === "signup" && !result.data.session) {
+        setMessage("Check your email, confirm your account, then return here to sign in.");
+      }
+    } catch (authError) {
+      setError(authError?.message || "The secure sign-in service could not be reached.");
+    } finally {
+      setBusy(false);
     }
   };
 
