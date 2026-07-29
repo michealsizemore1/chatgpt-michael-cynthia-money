@@ -4212,24 +4212,54 @@ function AuthScreen() {
 function CloudRoot() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [startupError, setStartupError] = useState("");
 
   useEffect(() => {
     if (!supabaseClient) { setLoading(false); return; }
-    supabaseClient.auth.getSession().then(({ data }) => {
-      setSession(data.session || null);
+    let active = true;
+    const timeout = setTimeout(() => {
+      if (!active) return;
+      setStartupError("The secure connection took too long. You can still open the sign-in screen and try again.");
+      setLoading(false);
+    }, 6000);
+    supabaseClient.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
+      clearTimeout(timeout);
+      if (error) setStartupError(error.message || "Could not restore your sign-in.");
+      setSession(data?.session || null);
+      setLoading(false);
+    }).catch(error => {
+      if (!active) return;
+      clearTimeout(timeout);
+      setStartupError(error?.message || "Could not connect to the secure budget service.");
       setLoading(false);
     });
     const { data: listener } = supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
+      if (!active) return;
+      clearTimeout(timeout);
       setSession(nextSession);
       setLoading(false);
     });
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
     return <div className="min-h-screen bg-slate-950 text-white grid place-items-center"><div className="text-sm text-slate-300">Opening your secure budget…</div></div>;
   }
-  if (!session) return <AuthScreen />;
+  if (!session) return (
+    <>
+      {startupError && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xl rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 shadow-lg">
+          {startupError}
+        </div>
+      )}
+      <AuthScreen />
+    </>
+  );
   return <App session={session} onSignOut={() => supabaseClient.auth.signOut()} />;
 }
 
