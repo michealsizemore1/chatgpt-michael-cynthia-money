@@ -81,8 +81,9 @@ function categoryIconOf(cat) { return (CATEGORY_META[cat] && CATEGORY_META[cat].
 // Built-in expense categories plus any user-added custom categories, alphabetized.
 function allExpenseCategories(data) {
   const custom = (data && data.customCategories) || [];
+  const hidden = new Set((data && data.hiddenBudgetCategories) || []);
   const set = new Set([...EXPENSE_CATEGORIES, ...custom]);
-  return [...set].sort((a, b) => a.localeCompare(b));
+  return [...set].filter(cat => !hidden.has(cat)).sort((a, b) => a.localeCompare(b));
 }
 
 // Every category (expense, Income, Transfer) plus custom ones, alphabetized — for registers
@@ -1332,6 +1333,11 @@ function Budgets({ data, actions, derived }) {
     if (!isNaN(v) && v >= 0) actions.setBudget(editCat, v);
     setEditCat(null);
   };
+  const deleteBudget = (cat) => {
+    if (!window.confirm(`Delete the ${cat} budget? Historical transactions will keep their category.`)) return;
+    actions.deleteBudget(cat);
+    if (trendCat === cat) setTrendCat(budgetCategories.find(c => c !== cat) || "Groceries");
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-5 md:space-y-6">
@@ -1375,7 +1381,10 @@ function Budgets({ data, actions, derived }) {
                   <span className="text-lg">{categoryIconOf(cat)}</span>
                   <span className="font-medium text-slate-700 text-sm">{cat}</span>
                 </div>
-                <button onClick={() => openEdit(cat)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                <span className="flex items-center gap-3">
+                  <button onClick={() => openEdit(cat)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
+                  <button onClick={() => deleteBudget(cat)} className="text-xs text-rose-500 hover:text-rose-700 font-medium">Delete</button>
+                </span>
               </div>
               <ProgressBar pct={pct} color={over ? "#e11d48" : categoryColor(cat)} />
               <div className="flex items-center justify-between mt-2 text-xs">
@@ -4219,6 +4228,16 @@ function App() {
     }),
 
     setBudget: (cat, val) => setData(d => ({ ...d, budgets: { ...d.budgets, [cat]: val } })),
+    deleteBudget: (cat) => setData(d => {
+      const budgets = { ...d.budgets };
+      delete budgets[cat];
+      return {
+        ...d,
+        budgets,
+        customCategories: (d.customCategories || []).filter(c => c !== cat),
+        hiddenBudgetCategories: [...new Set([...(d.hiddenBudgetCategories || []), cat])],
+      };
+    }, "Budget category deleted"),
     toggleBudgetRollover: (cat) => setData(d => ({ ...d, budgetRollovers: { ...(d.budgetRollovers || {}), [cat]: !(d.budgetRollovers || {})[cat] } }), "Rollover setting changed"),
     addSinkingFund: (fund) => setData(d => ({ ...d, sinkingFunds: [...(d.sinkingFunds || []), fund] }), "Sinking fund added"),
     contributeSinkingFund: (id, amount) => setData(d => ({ ...d, sinkingFunds: (d.sinkingFunds || []).map(f => f.id === id ? { ...f, current: Math.min(f.target, f.current + amount) } : f) }), "Sinking fund contribution"),
@@ -4262,6 +4281,17 @@ function App() {
     addCategory: (name) => setData(d => {
       const trimmed = String(name || "").trim();
       if (!trimmed) return d;
+      const hidden = new Set(d.hiddenBudgetCategories || []);
+      if (hidden.has(trimmed)) {
+        hidden.delete(trimmed);
+        return {
+          ...d,
+          hiddenBudgetCategories: [...hidden],
+          customCategories: EXPENSE_CATEGORIES.includes(trimmed)
+            ? (d.customCategories || [])
+            : [...new Set([...(d.customCategories || []), trimmed])],
+        };
+      }
       const existing = new Set([...EXPENSE_CATEGORIES, ...(d.customCategories || [])].map(c => c.toLowerCase()));
       if (existing.has(trimmed.toLowerCase())) return d;
       return { ...d, customCategories: [...(d.customCategories || []), trimmed] };
