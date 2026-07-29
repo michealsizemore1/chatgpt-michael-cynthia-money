@@ -700,6 +700,27 @@ function ensureHouseholdRegisters(data) { return data; }
 function ensureDiscoverRegister(data) { return data; }
 function ensureUserNamedSubscriptions(data) { return data; }
 
+function normalizeBudgetData(data) {
+  return {
+    ...data,
+    accounts: data.accounts || [],
+    transactions: data.transactions || [],
+    budgets: data.budgets || {},
+    subscriptions: data.subscriptions || [],
+    goals: data.goals || [],
+    recurringBills: data.recurringBills || [],
+    rules: data.rules || [],
+    investments: data.investments || [],
+    paidBills: data.paidBills || {},
+    customCategories: data.customCategories || [],
+    sinkingFunds: data.sinkingFunds || [],
+    reconciliations: data.reconciliations || {},
+    privacyPrefs: data.privacyPrefs || { hideBalances: false, viewer: "Household" },
+    notificationPrefs: data.notificationPrefs || { enabled: false },
+    auditLog: data.auditLog || [],
+  };
+}
+
 function loadData() {
   let data = null;
   try {
