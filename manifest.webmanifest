@@ -1,0 +1,18 @@
+{
+  "name": "Michael & Cynthia's Money",
+  "short_name": "M&C Money",
+  "description": "Household budget, cash flow, goals, and net worth tracker.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f5f9",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

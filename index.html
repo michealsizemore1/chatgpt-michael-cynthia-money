@@ -4,6 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Michael &amp; Cynthia's Money — Budget &amp; Net Worth Tracker</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#4f46e5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -676,492 +678,11 @@ function emptyData() {
   return { accounts: [], transactions: [], budgets: {}, subscriptions: [], goals: [], netWorthHistory: [], recurringBills: [], rules: [], investments: [], paidBills: {}, customCategories: [] };
 }
 
-/* ---- Cindy's Credit Card Register -------------------------------------
-   Imported from register-backup-2026-07-28.json (the user's real ICCU
-   credit card register export). Categories were mapped onto this app's
-   category set, "expense" rows became charges, "payment"/"return" rows
-   became credits, and "who" became the person tag. An earlier version of
-   this register used placeholder data from a different (retirement
-   planner) file — CINDY_PLACEHOLDER_NOTE below is used to detect and
-   replace that placeholder without disturbing anything else the user
-   has since added. */
-
-const CINDY_CC_ACCOUNT_ID = "acc_cindy_cc";
-const CINDY_CC_ACCOUNT_NAME = "Cindy's Credit Card";
-const CINDY_PLACEHOLDER_NOTE = "Imported from retirement-planner-backup-2026-07-28.json";
-const CINDY_IMPORT_NOTE_V1 = "Imported from register-backup-2026-07-28.json";
-const CINDY_IMPORT_NOTE = "Imported from register-backup-2026-07-28.json (v2 - cleared status)";
-
-const CINDY_REGISTER_IMPORT = [
-    { date: "2026-07-26", merchant: "Albertsons", category: "Groceries", amount: -263.26, person: "Cynthia", cleared: false },
-    { date: "2026-07-26", merchant: "Dillard's", category: "Shopping", amount: -63.55, person: "Cynthia", cleared: false },
-    { date: "2026-07-26", merchant: "Half Priced Books", category: "Books", amount: -68.3, person: "Cynthia", cleared: false },
-    { date: "2026-07-26", merchant: "Starbucks", category: "Dining & Coffee", amount: -15, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Albertsons", category: "Groceries", amount: -95.45, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Cabela's", category: "Shopping", amount: -69.09, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Costco", category: "Shopping", amount: -137.79, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Maverick", category: "Transportation", amount: -10, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "TJ Maxx", category: "Shopping", amount: -50.85, person: "Cynthia" },
-    { date: "2026-07-25", merchant: "Starbucks", category: "Dining & Coffee", amount: -15, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Amazon", category: "Other", amount: -54.01, person: "Cynthia", cleared: false },
-    { date: "2026-07-25", merchant: "Cabellla's", category: "Shopping", amount: -504, person: "Cynthia" },
-    { date: "2026-07-23", merchant: "Starbucks", category: "Dining & Coffee", amount: -25, person: "Cynthia" },
-    { date: "2026-07-22", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 427.38, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Al's", category: "Health & Fitness", amount: -93.63, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Albertsons", category: "Groceries", amount: -83.21, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Al's", category: "Shopping", amount: -200.62, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Starbucks", category: "Dining & Coffee", amount: -10, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Starbucks", category: "Dining & Coffee", amount: -15, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Albertsons", category: "Groceries", amount: -91.07, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Amazon", category: "Books", amount: -59.36, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 200, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 777.57, person: "Michael" },
-    { date: "2026-07-20", merchant: "REI", category: "Travel", amount: -687.94, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Cabela's", category: "Shopping", amount: -89.63, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Starbucks", category: "Dining & Coffee", amount: -25, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Amazon", category: "Shopping", amount: -185.85, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Dillard's", category: "Shopping", amount: -110.04, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Target", category: "Shopping", amount: -29.68, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Amazon", category: "Shopping", amount: -34.24, person: "Cynthia" },
-    { date: "2026-07-19", merchant: "Half Priced Books", category: "Books", amount: -37.59, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 197.21, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 447.36, person: "Michael" },
-    { date: "2026-07-18", merchant: "Amazon", category: "Shopping", amount: -21.76, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Amazon", category: "Shopping", amount: -72.47, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Amazon", category: "Shopping", amount: -20.11, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Ebay", category: "Shopping", amount: -8.08, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Starbucks", category: "Dining & Coffee", amount: -10, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Amazon", category: "Shopping", amount: -11.31, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Amazon", category: "Shopping", amount: -53.48, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "Al's", category: "Shopping", amount: -177.23, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "Ebay", category: "Shopping", amount: -13.25, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "Poshmark", category: "Shopping", amount: 6.49, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "Poshmark", category: "Shopping", amount: -54.19, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "Ebay", category: "Shopping", amount: -38.15, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 293.25, person: "Cynthia" },
-    { date: "2026-07-15", merchant: "Albertsons", category: "Groceries", amount: -150.73, person: "Cynthia" },
-    { date: "2026-07-15", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 388.23, person: "Cynthia" },
-    { date: "2026-07-15", merchant: "Raising Canes", category: "Dining & Coffee", amount: -36.93, person: "Cynthia" },
-    { date: "2026-07-14", merchant: "Al's", category: "Shopping", amount: -79.34, person: "Cynthia" },
-    { date: "2026-07-14", merchant: "Poshmark", category: "Shopping", amount: -47.83, person: "Cynthia" },
-    { date: "2026-07-11", merchant: "Starbucks", category: "Dining & Coffee", amount: -25, person: "Cynthia" },
-    { date: "2026-07-11", merchant: "Poshmark", category: "Shopping", amount: -46.77, person: "Cynthia" },
-    { date: "2026-07-11", merchant: "Dominos", category: "Dining & Coffee", amount: -21.18, person: "Cynthia" },
-    { date: "2026-07-10", merchant: "Amazon", category: "Shopping", amount: -47.68, person: "Cynthia" },
-    { date: "2026-07-09", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 400, person: "Cynthia" },
-    { date: "2026-07-09", merchant: "Best Buy Payment", category: "Transfer", amount: 100, person: "Michael" },
-    { date: "2026-07-09", merchant: "Best Buy", category: "Shopping", amount: -190.79, person: "Cynthia" },
-    { date: "2026-07-09", merchant: "Best Buy Payment", category: "Transfer", amount: 84.79, person: "Michael" },
-    { date: "2026-07-08", merchant: "Albertsons", category: "Groceries", amount: -230.02, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Starbucks", category: "Dining & Coffee", amount: -25, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Costco", category: "Groceries", amount: -85.89, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Ebay", category: "Books", amount: -19.08, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Poshmark", category: "Books", amount: -11.79, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Poshmark", category: "Books", amount: -11.79, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Poshmark", category: "Shopping", amount: -24.51, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Poshmark", category: "Shopping", amount: -22.39, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Poshmark", category: "Shopping", amount: -16.03, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Amazon", category: "Shopping", amount: -26.22, person: "Cynthia" },
-    { date: "2026-07-08", merchant: "Maverick", category: "Other", amount: -31, person: "Cynthia" },
-    { date: "2026-07-07", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 647.42, person: "Cynthia" },
-    { date: "2026-07-07", merchant: "Best Buy", category: "Shopping", amount: -84.79, person: "Cynthia" },
-    { date: "2026-07-07", merchant: "Starbucks", category: "Dining & Coffee", amount: -10, person: "Cynthia" },
-    { date: "2026-07-06", merchant: "Albertsons", category: "Groceries", amount: -10.38, person: "Cynthia" },
-    { date: "2026-07-06", merchant: "Paramount Animal Care", category: "Transfer", amount: 350.42, person: "Cynthia" },
-    { date: "2026-07-06", merchant: "Paramount  Animal Care", category: "Pets", amount: -350.42, person: "Cynthia" },
-    { date: "2026-07-06", merchant: "Starbucks", category: "Dining & Coffee", amount: -10, person: "Cynthia" },
-    { date: "2026-07-06", merchant: "Starbucks", category: "Dining & Coffee", amount: -10, person: "Cynthia" },
-    { date: "2026-07-05", merchant: "ICCU Credit Card Payment.", category: "Transfer", amount: 330.26, person: "Cynthia" },
-    { date: "2026-07-05", merchant: "Taco Bell", category: "Dining & Coffee", amount: -40.21, person: "Cynthia" },
-    { date: "2026-07-05", merchant: "Sunrise Espesso", category: "Dining & Coffee", amount: -20.55, person: "Cynthia" },
-    { date: "2026-07-05", merchant: "Jitters", category: "Dining & Coffee", amount: -39.29, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "Maverick", category: "Other", amount: -55.62, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "Target", category: "Groceries", amount: -125.22, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "The Labadore Store & More", category: "Pets", amount: -37.1, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "Zips", category: "Dining & Coffee", amount: -31.87, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "The Labadore Store & More", category: "Pets", amount: -22.26, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "The Labadore Store & More", category: "Pets", amount: -21.2, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "The Leather Works", category: "Shopping", amount: -31.8, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "CDA Pet Market", category: "Pets", amount: -35.33, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "Ms. Goneypeeps Sweetshop", category: "Groceries", amount: -42.04, person: "Cynthia" },
-    { date: "2026-07-03", merchant: "CDA Pets", category: "Pets", amount: -104.29, person: "Cynthia" },
-    { date: "2026-07-03", merchant: "Stinker (ice)", category: "Groceries", amount: -4.23, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Maverick", category: "Other", amount: -45, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Amazon", category: "Books", amount: -26.5, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Walmart", category: "Transportation", amount: -7.36, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Albertsons", category: "Groceries", amount: -34.92, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Northwest Pets", category: "Pets", amount: -14.82, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Starbucks", category: "Dining & Coffee", amount: -20, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Paramount Animal Care", category: "Pets", amount: -15.26, person: "Cynthia" },
-    { date: "2026-07-01", merchant: "Added Manually to Balance", category: "Other", amount: -136.3, person: "Cynthia" },
-    { date: "2026-07-01", merchant: "Barnes and Noble", category: "Books", amount: -30.53, person: "Cynthia" },
-    { date: "2026-07-01", merchant: "Al's Sporting Goods", category: "Health & Fitness", amount: -29.15, person: "Cynthia" },
-    { date: "2026-07-01", merchant: "Best Buy Return", category: "Shopping", amount: 42.39, person: "Michael" },
-    { date: "2026-07-01", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: 120.71, person: "Michael" },
-    { date: "2026-06-29", merchant: "Maurice's", category: "Shopping", amount: -18.54, person: "Joint" },
-];
-
-function buildCindyRegisterAdditions() {
-  const balance = Math.round(CINDY_REGISTER_IMPORT.reduce((s, t) => s + t.amount, 0) * 100) / 100;
-  const account = { id: CINDY_CC_ACCOUNT_ID, name: CINDY_CC_ACCOUNT_NAME, institution: "ICCU", type: "credit", balance, openingBalance: 0 };
-  const transactions = CINDY_REGISTER_IMPORT.map(t => ({
-    id: uid(), date: t.date, accountId: CINDY_CC_ACCOUNT_ID, merchant: t.merchant,
-    category: t.category, amount: t.amount, notes: CINDY_IMPORT_NOTE, person: t.person, cleared: t.cleared !== false,
-  }));
-  return { account, transactions };
-}
-
-function ensureCindyRegister(data) {
-  let accounts = data.accounts || [];
-  let transactions = data.transactions || [];
-  let budgets = data.budgets || {};
-
-  const hasAccount = accounts.some(a => a.id === CINDY_CC_ACCOUNT_ID || a.name === CINDY_CC_ACCOUNT_NAME);
-  const hasRealImport = transactions.some(t => t.notes === CINDY_IMPORT_NOTE);
-  if (hasAccount && hasRealImport) return data; // already fully up to date
-
-  // Drop the earlier placeholder transactions (from the retirement-planner file) and the v1 import
-  // (which didn't track cleared status) now that we have the real register with correct cleared flags.
-  transactions = transactions.filter(t => t.notes !== CINDY_PLACEHOLDER_NOTE && t.notes !== CINDY_IMPORT_NOTE_V1);
-
-  const { account, transactions: importedTx } = buildCindyRegisterAdditions();
-  accounts = hasAccount
-    ? accounts.map(a => (a.id === CINDY_CC_ACCOUNT_ID || a.name === CINDY_CC_ACCOUNT_NAME) ? { ...a, balance: account.balance, institution: account.institution } : a)
-    : [...accounts, account];
-  transactions = [...importedTx, ...transactions].sort((a, b) => (a.date < b.date ? 1 : -1));
-  budgets = {
-    ...budgets,
-    "Personal Support": budgets["Personal Support"] || DEFAULT_BUDGETS["Personal Support"],
-    "Pets": budgets["Pets"] || DEFAULT_BUDGETS["Pets"],
-    "Books": budgets["Books"] || DEFAULT_BUDGETS["Books"],
-  };
-
-  return { ...data, accounts, transactions, budgets };
-}
-
-/* ---- Household bank registers (Cindy's Checking, Mike's Checking, Savings, HYSA) -------
-   Also imported from register-backup-2026-07-28.json (chkTxns, mikeTxns, savingsTxns,
-   hysaTxns + their opening balances). Money moving between the household's own accounts
-   (credit-card payments, spouse-to-spouse transfers, investment contributions) is tagged
-   category "Transfer" so it doesn't distort spending/income totals elsewhere in the app;
-   genuine paychecks/refunds are tagged "Income" and real purchases keep their real
-   category. */
-
-const CHK_ACCOUNT_ID = "acc_cindy_chk";
-const CHK_ACCOUNT_NAME = "Cindy's Checking";
-const MIKE_ACCOUNT_ID = "acc_mike_chk";
-const MIKE_ACCOUNT_NAME = "Mike's Checking";
-const SAVINGS_ACCOUNT_ID = "acc_household_savings";
-const SAVINGS_ACCOUNT_NAME = "Household Savings";
-const HYSA_ACCOUNT_ID = "acc_household_hysa";
-const HYSA_ACCOUNT_NAME = "Household HYSA";
-const HOUSEHOLD_IMPORT_NOTE = "Imported from register-backup-2026-07-28.json";
-
-const CHK_REGISTER_IMPORT = [
-    { date: "2026-07-01", merchant: "Deposit", category: "Income", amount: 1006.8, person: "Cynthia" },
-    { date: "2026-07-01", merchant: "Albertsons", category: "Groceries", amount: -71.72, person: "Cynthia" },
-    { date: "2026-07-02", merchant: "Cash Withdrawal", category: "Other", amount: -100, person: "Cynthia" },
-    { date: "2026-07-04", merchant: "Venmo", category: "Other", amount: -41.9, person: "Cynthia" },
-    { date: "2026-07-05", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -330.26, person: "Cynthia" },
-    { date: "2026-07-07", merchant: "Transfer from Mike", category: "Transfer", amount: 600, person: "Cynthia" },
-    { date: "2026-07-07", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -647.42, person: "Cynthia" },
-    { date: "2026-07-09", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -400, person: "Cynthia" },
-    { date: "2026-07-15", merchant: "Transfer from Mike", category: "Transfer", amount: 1188.23, person: "Cynthia" },
-    { date: "2026-07-15", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -388.23, person: "Cynthia" },
-    { date: "2026-07-17", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -293.25, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "ATM Withdraw", category: "Other", amount: -60, person: "Cynthia" },
-    { date: "2026-07-18", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -197.21, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -200, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Transfer from Mike's Checking", category: "Transfer", amount: 375, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Transfer from HYSA", category: "Transfer", amount: 24.65, person: "Cynthia" },
-    { date: "2026-07-20", merchant: "Barnes & Noble", category: "Books", amount: -20.02, person: "Cynthia" },
-    { date: "2026-07-22", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -427.38, person: "Cynthia" },
-];
-
-const MIKE_REGISTER_IMPORT = [
-    { date: "2026-07-01", merchant: "Verizon Wireless", category: "Utilities", amount: -154.58, person: "Michael" },
-    { date: "2026-07-01", merchant: "Discovercard", category: "Other", amount: -58.22, person: "Michael" },
-    { date: "2026-07-01", merchant: "Trupanion", category: "Pets", amount: -41.42, person: "Michael" },
-    { date: "2026-07-09", merchant: "Best Buy Payment", category: "Transfer", amount: -84.79, person: "Michael" },
-    { date: "2026-07-09", merchant: "Best Buy Payment", category: "Transfer", amount: -100, person: "Michael" },
-    { date: "2026-07-11", merchant: "Trupanion", category: "Pets", amount: -39.08, person: "Michael" },
-    { date: "2026-07-13", merchant: "Trupanion Refund", category: "Income", amount: 3.01, person: "Michael" },
-    { date: "2026-07-14", merchant: "Cash Back Rewards (ICCU)", category: "Income", amount: 25, person: "Michael" },
-    { date: "2026-07-14", merchant: "M1 Finance SGOV", category: "Transfer", amount: -25, person: "Michael" },
-    { date: "2026-07-15", merchant: "Chase Payment", category: "Other", amount: -0.65, person: "Michael" },
-    { date: "2026-07-15", merchant: "Veterans Affairs Deposit", category: "Income", amount: 1624.36, person: "Michael" },
-    { date: "2026-07-15", merchant: "Transfer to Cindy", category: "Transfer", amount: -1188.23, person: "Michael" },
-    { date: "2026-07-16", merchant: "M1 Finance (All Things Bucket)", category: "Transfer", amount: -25, person: "Michael" },
-    { date: "2026-07-20", merchant: "Transfer to Cindy", category: "Transfer", amount: -375, person: "Michael" },
-    { date: "2026-07-22", merchant: "Transfer from Savings", category: "Transfer", amount: 25, person: "Michael" },
-    { date: "2026-07-22", merchant: "Transfer to M1", category: "Transfer", amount: -25, person: "Michael" },
-];
-
-const HYSA_REGISTER_IMPORT = [
-    { date: "2026-07-18", merchant: "ICCU Payment", category: "Transfer", amount: -447.36, person: "Joint" },
-    { date: "2026-07-20", merchant: "ICCU Credit Card Payment", category: "Transfer", amount: -777.57, person: "Joint" },
-    { date: "2026-07-20", merchant: "Transfer to Cindy", category: "Transfer", amount: -24.65, person: "Joint" },
-];
-
-function buildHouseholdRegisterAdditions() {
-  function build(id, name, type, opening, imports) {
-    const balance = Math.round((opening + imports.reduce((s, t) => s + t.amount, 0)) * 100) / 100;
-    const account = { id, name, institution: "ICCU", type, balance, openingBalance: opening };
-    const transactions = imports.map(t => ({
-      id: uid(), date: t.date, accountId: id, merchant: t.merchant, category: t.category,
-      amount: t.amount, notes: HOUSEHOLD_IMPORT_NOTE, person: t.person, cleared: true,
-    }));
-    return { account, transactions };
-  }
-  const chk = build(CHK_ACCOUNT_ID, CHK_ACCOUNT_NAME, "checking", 0, CHK_REGISTER_IMPORT);
-  const mike = build(MIKE_ACCOUNT_ID, MIKE_ACCOUNT_NAME, "checking", 441.31, MIKE_REGISTER_IMPORT);
-  const savings = build(SAVINGS_ACCOUNT_ID, SAVINGS_ACCOUNT_NAME, "savings", 25.18, []);
-  const hysa = build(HYSA_ACCOUNT_ID, HYSA_ACCOUNT_NAME, "savings", 7249.58, HYSA_REGISTER_IMPORT);
-  return {
-    accounts: [chk.account, mike.account, savings.account, hysa.account],
-    transactions: [...chk.transactions, ...mike.transactions, ...savings.transactions, ...hysa.transactions],
-  };
-}
-
-function ensureHouseholdRegisters(data) {
-  let accounts = data.accounts || [];
-  let transactions = data.transactions || [];
-
-  const householdIds = [CHK_ACCOUNT_ID, MIKE_ACCOUNT_ID, SAVINGS_ACCOUNT_ID, HYSA_ACCOUNT_ID];
-  const hasAllAccounts = householdIds.every(id => accounts.some(a => a.id === id));
-  const hasImport = transactions.some(t => t.notes === HOUSEHOLD_IMPORT_NOTE);
-  if (hasAllAccounts && hasImport) return data; // already fully up to date
-
-  const { accounts: newAccounts, transactions: newTx } = buildHouseholdRegisterAdditions();
-  newAccounts.forEach(na => {
-    if (!accounts.some(a => a.id === na.id)) accounts = [...accounts, na];
-  });
-  if (!hasImport) {
-    transactions = [...newTx, ...transactions].sort((a, b) => (a.date < b.date ? 1 : -1));
-  }
-
-  return { ...data, accounts, transactions };
-}
-
-/* ---- Discovercard (Michael's card) -------------------------------------------------
-   Imported from 11 monthly statement CSVs (Jul 2025 - Jul 2026). Statement convention is
-   the opposite of this app's: a charge posts as a positive amount and a payment/credit
-   posts as negative, so signs are flipped on import (charge -> negative/expense, payment
-   or credit -> positive). Nearly every line item here is a recurring subscription. */
-
-const DISCOVER_ACCOUNT_ID = "acc_discover_cc";
-const DISCOVER_ACCOUNT_NAME = "Discovercard";
-const DISCOVER_IMPORT_NOTE = "Imported from Discover statement CSVs (Jul 2025 - Jul 2026)";
-
-const DISCOVER_REGISTER_IMPORT = [
-    { date: "2025-07-26", merchant: "Discover Payment", category: "Transfer", amount: 243.77, person: "Michael" },
-    { date: "2025-07-27", merchant: "Best Buy Total", category: "Subscriptions", amount: -179.99, person: "Michael" },
-    { date: "2025-07-30", merchant: "Discover Payment", category: "Transfer", amount: 179.99, person: "Michael" },
-    { date: "2025-08-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2025-08-02", merchant: "Acorn TV", category: "Subscriptions", amount: -8.99, person: "Michael" },
-    { date: "2025-08-10", merchant: "Hallmark Movies Now", category: "Subscriptions", amount: -7.99, person: "Michael" },
-    { date: "2025-08-15", merchant: "Netflix", category: "Subscriptions", amount: -17.99, person: "Michael" },
-    { date: "2025-08-16", merchant: "BritBox", category: "Subscriptions", amount: -8.99, person: "Michael" },
-    { date: "2025-08-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2025-08-20", merchant: "Peacock", category: "Subscriptions", amount: -13.99, person: "Michael" },
-    { date: "2025-08-23", merchant: "Discover Payment", category: "Transfer", amount: 65.0, person: "Michael" },
-    { date: "2025-08-24", merchant: "CBS", category: "Subscriptions", amount: -12.99, person: "Michael" },
-    { date: "2025-08-27", merchant: "Discover Payment", category: "Transfer", amount: 38.92, person: "Michael" },
-    { date: "2025-09-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2025-09-02", merchant: "ESPN+", category: "Subscriptions", amount: -29.99, person: "Michael" },
-    { date: "2025-09-02", merchant: "Acorn TV", category: "Subscriptions", amount: -8.99, person: "Michael" },
-    { date: "2025-09-09", merchant: "Barnes & Noble Membership", category: "Subscriptions", amount: -42.39, person: "Michael" },
-    { date: "2025-09-10", merchant: "Hallmark Movies Now", category: "Subscriptions", amount: -7.99, person: "Michael" },
-    { date: "2025-09-15", merchant: "Netflix", category: "Subscriptions", amount: -17.99, person: "Michael" },
-    { date: "2025-09-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2025-09-20", merchant: "Peacock", category: "Subscriptions", amount: -16.99, person: "Michael" },
-    { date: "2025-09-21", merchant: "Frndly TV", category: "Subscriptions", amount: -10.99, person: "Michael" },
-    { date: "2025-09-24", merchant: "Paramount+", category: "Subscriptions", amount: -12.99, person: "Michael" },
-    { date: "2025-09-24", merchant: "Discover Payment", category: "Transfer", amount: 168.31, person: "Michael" },
-    { date: "2025-09-27", merchant: "Discover Payment", category: "Transfer", amount: 12.99, person: "Michael" },
-    { date: "2025-09-28", merchant: "Gear Tracker", category: "Subscriptions", amount: -1.99, person: "Michael" },
-    { date: "2025-10-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2025-10-02", merchant: "ESPN+", category: "Subscriptions", amount: -10.0, person: "Michael" },
-    { date: "2025-10-02", merchant: "ESPN+", category: "Subscriptions", amount: -29.99, person: "Michael" },
-    { date: "2025-10-02", merchant: "Experian Credit Report", category: "Subscriptions", amount: -299.99, person: "Michael" },
-    { date: "2025-10-05", merchant: "Komoot", category: "Subscriptions", amount: -4.99, person: "Michael" },
-    { date: "2025-10-15", merchant: "Netflix", category: "Subscriptions", amount: -17.99, person: "Michael" },
-    { date: "2025-10-16", merchant: "Discover Payment", category: "Transfer", amount: 369.95, person: "Michael" },
-    { date: "2025-10-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2025-10-20", merchant: "Peacock", category: "Subscriptions", amount: -16.99, person: "Michael" },
-    { date: "2025-10-22", merchant: "Frndly TV", category: "Subscriptions", amount: -10.99, person: "Michael" },
-    { date: "2025-10-24", merchant: "Paramount+", category: "Subscriptions", amount: -12.99, person: "Michael" },
-    { date: "2025-10-25", merchant: "Kindle Unlimited", category: "Subscriptions", amount: -0.99, person: "Michael" },
-    { date: "2025-10-25", merchant: "Kindle Unlimited", category: "Subscriptions", amount: -0.99, person: "Michael" },
-    { date: "2025-10-26", merchant: "Discover Payment", category: "Transfer", amount: 68.95, person: "Michael" },
-    { date: "2025-10-28", merchant: "Gear Tracker", category: "Subscriptions", amount: -1.99, person: "Michael" },
-    { date: "2025-10-29", merchant: "Discover Payment", category: "Transfer", amount: 1.98, person: "Michael" },
-    { date: "2025-11-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2025-11-02", merchant: "ESPN+", category: "Subscriptions", amount: -39.99, person: "Michael" },
-    { date: "2025-11-15", merchant: "Netflix", category: "Subscriptions", amount: -17.99, person: "Michael" },
-    { date: "2025-11-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2025-11-20", merchant: "Peacock", category: "Subscriptions", amount: -16.99, person: "Michael" },
-    { date: "2025-11-22", merchant: "Frndly TV", category: "Subscriptions", amount: -10.99, person: "Michael" },
-    { date: "2025-11-24", merchant: "Discover Cashback Bonus", category: "Income", amount: 4.14, person: "Michael" },
-    { date: "2025-11-24", merchant: "Paramount+", category: "Subscriptions", amount: -12.99, person: "Michael" },
-    { date: "2025-11-24", merchant: "Discover Payment", category: "Transfer", amount: 116.79, person: "Michael" },
-    { date: "2025-12-25", merchant: "Kindle Unlimited", category: "Subscriptions", amount: -11.99, person: "Michael" },
-    { date: "2025-12-28", merchant: "Audible", category: "Subscriptions", amount: -14.8, person: "Michael" },
-    { date: "2025-12-28", merchant: "Gear Tracker", category: "Subscriptions", amount: -1.99, person: "Michael" },
-    { date: "2025-12-30", merchant: "Discover Payment", category: "Transfer", amount: 26.97, person: "Michael" },
-    { date: "2025-12-31", merchant: "Discover Payment", category: "Transfer", amount: 14.8, person: "Michael" },
-    { date: "2026-01-01", merchant: "Audible", category: "Subscriptions", amount: -5.29, person: "Michael" },
-    { date: "2026-01-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2026-01-07", merchant: "SiriusXM", category: "Subscriptions", amount: -179.82, person: "Michael" },
-    { date: "2026-01-10", merchant: "Word Search World", category: "Subscriptions", amount: -6.99, person: "Michael" },
-    { date: "2026-01-10", merchant: "Words of Wonders", category: "Subscriptions", amount: -14.99, person: "Michael" },
-    { date: "2026-01-12", merchant: "Audible", category: "Subscriptions", amount: -5.94, person: "Michael" },
-    { date: "2026-01-13", merchant: "Discover Payment", category: "Transfer", amount: 179.82, person: "Michael" },
-    { date: "2026-01-14", merchant: "Discover Payment", category: "Transfer", amount: 32.9, person: "Michael" },
-    { date: "2026-01-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-01-17", merchant: "Audible", category: "Subscriptions", amount: -16.68, person: "Michael" },
-    { date: "2026-01-21", merchant: "Discover Payment", category: "Transfer", amount: 49.97, person: "Michael" },
-    { date: "2026-01-25", merchant: "Kindle Unlimited", category: "Subscriptions", amount: -11.99, person: "Michael" },
-    { date: "2026-01-25", merchant: "Kindle Unlimited", category: "Subscriptions", amount: -11.99, person: "Michael" },
-    { date: "2026-01-27", merchant: "Audible", category: "Subscriptions", amount: -15.85, person: "Michael" },
-    { date: "2026-01-29", merchant: "Udemy", category: "Subscriptions", amount: -15.99, person: "Michael" },
-    { date: "2026-01-31", merchant: "Discover Payment", category: "Transfer", amount: 55.82, person: "Michael" },
-    { date: "2026-02-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2026-02-10", merchant: "HBO Max", category: "Subscriptions", amount: -18.49, person: "Michael" },
-    { date: "2026-02-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-02-18", merchant: "Discover Payment", category: "Transfer", amount: 41.48, person: "Michael" },
-    { date: "2026-02-19", merchant: "Discover Payment", category: "Transfer", amount: 9.99, person: "Michael" },
-    { date: "2026-02-28", merchant: "Udemy", category: "Subscriptions", amount: -18.99, person: "Michael" },
-    { date: "2026-03-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2026-03-02", merchant: "Garmin Connect+", category: "Subscriptions", amount: -6.99, person: "Michael" },
-    { date: "2026-03-05", merchant: "Discover Payment", category: "Transfer", amount: 18.99, person: "Michael" },
-    { date: "2026-03-07", merchant: "Audible", category: "Subscriptions", amount: -13.36, person: "Michael" },
-    { date: "2026-03-12", merchant: "Discover Cashback Bonus", category: "Income", amount: 1.67, person: "Michael" },
-    { date: "2026-03-12", merchant: "Discover Payment", category: "Transfer", amount: 41.67, person: "Michael" },
-    { date: "2026-03-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-03-20", merchant: "Netflix", category: "Subscriptions", amount: -17.99, person: "Michael" },
-    { date: "2026-03-25", merchant: "Discover Payment", category: "Transfer", amount: 27.98, person: "Michael" },
-    { date: "2026-03-31", merchant: "iFIT", category: "Health & Fitness", amount: 0.9, person: "Michael" },
-    { date: "2026-03-31", merchant: "iFIT", category: "Health & Fitness", amount: 0.9, person: "Michael" },
-    { date: "2026-04-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2026-04-02", merchant: "Amazon Prime", category: "Subscriptions", amount: -147.34, person: "Michael" },
-    { date: "2026-04-02", merchant: "Garmin Connect+", category: "Subscriptions", amount: -6.99, person: "Michael" },
-    { date: "2026-04-08", merchant: "NoteWise AI", category: "Subscriptions", amount: -4.99, person: "Michael" },
-    { date: "2026-04-10", merchant: "Discover Payment", category: "Transfer", amount: 147.34, person: "Michael" },
-    { date: "2026-04-15", merchant: "Discover Payment", category: "Transfer", amount: 33.17, person: "Michael" },
-    { date: "2026-04-15", merchant: "Microsoft 365", category: "Subscriptions", amount: -129.99, person: "Michael" },
-    { date: "2026-04-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-04-17", merchant: "Acorn TV", category: "Subscriptions", amount: -8.99, person: "Michael" },
-    { date: "2026-04-20", merchant: "Discover Payment", category: "Transfer", amount: 129.99, person: "Michael" },
-    { date: "2026-04-22", merchant: "Discover Payment", category: "Transfer", amount: 18.98, person: "Michael" },
-    { date: "2026-05-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -22.99, person: "Michael" },
-    { date: "2026-05-02", merchant: "Garmin Connect+", category: "Subscriptions", amount: -6.99, person: "Michael" },
-    { date: "2026-05-08", merchant: "NoteWise AI", category: "Subscriptions", amount: -4.99, person: "Michael" },
-    { date: "2026-05-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-05-17", merchant: "Planet Fitness", category: "Subscriptions", amount: -1.06, person: "Michael" },
-    { date: "2026-05-22", merchant: "Discover Payment", category: "Transfer", amount: 34.97, person: "Michael" },
-    { date: "2026-05-28", merchant: "Discover Payment", category: "Transfer", amount: 11.05, person: "Michael" },
-    { date: "2026-05-28", merchant: "FloSports", category: "Subscriptions", amount: 9.0, person: "Michael" },
-    { date: "2026-06-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -26.99, person: "Michael" },
-    { date: "2026-06-02", merchant: "Garmin Connect+", category: "Subscriptions", amount: -6.99, person: "Michael" },
-    { date: "2026-06-06", merchant: "Perplexity AI", category: "Subscriptions", amount: -10.0, person: "Michael" },
-    { date: "2026-06-06", merchant: "Perplexity AI", category: "Subscriptions", amount: -20.0, person: "Michael" },
-    { date: "2026-06-07", merchant: "Perplexity AI", category: "Subscriptions", amount: -10.0, person: "Michael" },
-    { date: "2026-06-08", merchant: "Anthropic Claude Subscription", category: "Subscriptions", amount: -20.0, person: "Michael" },
-    { date: "2026-06-08", merchant: "NoteWise AI", category: "Subscriptions", amount: -4.99, person: "Michael" },
-    { date: "2026-06-10", merchant: "Anthropic API", category: "Subscriptions", amount: -5.0, person: "Michael" },
-    { date: "2026-06-11", merchant: "Audible", category: "Subscriptions", amount: -19.08, person: "Michael" },
-    { date: "2026-06-12", merchant: "Netlify", category: "Subscriptions", amount: -9.0, person: "Michael" },
-    { date: "2026-06-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-06-23", merchant: "Discover Payment", category: "Transfer", amount: 70.2, person: "Michael" },
-    { date: "2026-06-25", merchant: "Anthropic Claude Subscription", category: "Subscriptions", amount: -191.16, person: "Michael" },
-    { date: "2026-06-30", merchant: "Discover Payment", category: "Transfer", amount: 254.0, person: "Michael" },
-    { date: "2026-07-01", merchant: "YouTube Premium", category: "Subscriptions", amount: -26.99, person: "Michael" },
-    { date: "2026-07-07", merchant: "SiriusXM", category: "Subscriptions", amount: -191.93, person: "Michael" },
-    { date: "2026-07-12", merchant: "Anthropic API", category: "Subscriptions", amount: -10.0, person: "Michael" },
-    { date: "2026-07-16", merchant: "Discover Payment", category: "Transfer", amount: 58.22, person: "Michael" },
-    { date: "2026-07-16", merchant: "Ring Protect Plan", category: "Subscriptions", amount: -9.99, person: "Michael" },
-    { date: "2026-07-17", merchant: "Planet Fitness", category: "Subscriptions", amount: -21.23, person: "Michael" },
-];
-
-/* Recurring charges found by scanning the Discover statement history above with the same
-   detectUnknownSubscriptions heuristic used elsewhere (>=2 occurrences, >=2 distinct
-   months, consistent amount, ~monthly cadence). "active" reflects whether the merchant
-   still appears in the most recent statement (Jun 25 - Jul 24, 2026) or shortly before —
-   the user can flip this in the Subscriptions & Bills tab if a call was made either way. */
-const DISCOVER_SUBSCRIPTIONS_FOUND = [
-  { id: "cand_ring_protect_plan", merchant: "Ring Protect Plan", category: "Subscriptions", amount: 9.99, dayOfMonth: 16, active: true, lastDate: "2026-07-16", person: "Michael" },
-  { id: "cand_garmin_connect", merchant: "Garmin Connect+", category: "Subscriptions", amount: 6.99, dayOfMonth: 2, active: false, lastDate: "2026-06-02", person: "Michael" },
-  { id: "cand_notewise_ai", merchant: "NoteWise AI", category: "Subscriptions", amount: 4.99, dayOfMonth: 8, active: false, lastDate: "2026-06-08", person: "Michael" },
-  { id: "cand_paramount", merchant: "Paramount+", category: "Subscriptions", amount: 12.99, dayOfMonth: 24, active: false, lastDate: "2025-11-24", person: "Michael" },
-  { id: "cand_frndly_tv", merchant: "Frndly TV", category: "Subscriptions", amount: 10.99, dayOfMonth: 22, active: false, lastDate: "2025-11-22", person: "Michael" },
-  { id: "cand_udemy", merchant: "Udemy", category: "Subscriptions", amount: 17.49, dayOfMonth: 28, active: false, lastDate: "2026-02-28", person: "Michael" },
-  { id: "cand_hallmark_movies_now", merchant: "Hallmark Movies Now", category: "Subscriptions", amount: 7.99, dayOfMonth: 10, active: false, lastDate: "2025-09-10", person: "Michael" },
-];
-
-/* Subscriptions the user explicitly identified by name (2026-07-28), with real cadence/amounts
-   pulled from the Discover statement history above where available. Costco and Boldin have no
-   matching charges anywhere in the imported statements, so they're added as $0 placeholders —
-   the user can fill in the real amount via the "Edit" action once they have it. */
-const USER_NAMED_SUBSCRIPTIONS = [
-  { id: "sub_youtube_premium", merchant: "YouTube Premium", category: "Subscriptions", cadence: "Monthly", amount: 26.99, dayOfMonth: 1, active: true, person: "Michael", priceHistory: [{ date: "2025-08-01", amount: 22.99 }, { date: "2026-06-01", amount: 26.99 }] },
-  { id: "sub_planet_fitness_real", merchant: "Planet Fitness", category: "Subscriptions", cadence: "Monthly", amount: 21.23, dayOfMonth: 17, active: true, person: "Michael", priceHistory: [{ date: "2026-07-17", amount: 21.23 }] },
-  { id: "sub_siriusxm", merchant: "SiriusXM", category: "Subscriptions", cadence: "Semi-Annual", amount: 191.93, dayOfMonth: 7, active: true, person: "Michael", priceHistory: [{ date: "2026-01-07", amount: 179.82 }, { date: "2026-07-07", amount: 191.93 }] },
-  { id: "sub_amazon_prime_real", merchant: "Amazon Prime", category: "Subscriptions", cadence: "Annual", amount: 147.34, dayOfMonth: 2, active: true, person: "Michael", priceHistory: [{ date: "2026-04-02", amount: 147.34 }] },
-  { id: "sub_microsoft_365", merchant: "Microsoft 365", category: "Subscriptions", cadence: "Annual", amount: 129.99, dayOfMonth: 15, active: true, person: "Michael", priceHistory: [{ date: "2026-04-15", amount: 129.99 }] },
-  { id: "sub_claude_pro", merchant: "Claude Pro (Anthropic)", category: "Subscriptions", cadence: "Annual", amount: 191.16, dayOfMonth: 25, active: true, person: "Michael", priceHistory: [{ date: "2026-06-25", amount: 191.16 }] },
-  { id: "sub_barnes_noble", merchant: "Barnes & Noble Membership", category: "Subscriptions", cadence: "Annual", amount: 42.39, dayOfMonth: 9, active: true, person: "Michael", priceHistory: [{ date: "2025-09-09", amount: 42.39 }] },
-  { id: "sub_costco", merchant: "Costco", category: "Subscriptions", cadence: "Annual", amount: 0, dayOfMonth: 1, active: true, person: "Joint", priceHistory: [{ date: "2026-07-28", amount: 0 }] },
-  { id: "sub_boldin", merchant: "Boldin", category: "Subscriptions", cadence: "Annual", amount: 0, dayOfMonth: 1, active: true, person: "Joint", priceHistory: [{ date: "2026-07-28", amount: 0 }] },
-];
-
-function ensureUserNamedSubscriptions(data) {
-  let subscriptions = data.subscriptions || [];
-  const hasAll = USER_NAMED_SUBSCRIPTIONS.every(s => subscriptions.some(x => x.id === s.id));
-  if (hasAll) return data;
-  USER_NAMED_SUBSCRIPTIONS.forEach(s => {
-    if (!subscriptions.some(x => x.id === s.id)) subscriptions = [...subscriptions, s];
-  });
-  return { ...data, subscriptions };
-}
-
-function buildDiscoverRegisterAdditions() {
-  const balance = Math.round(DISCOVER_REGISTER_IMPORT.reduce((s, t) => s + t.amount, 0) * 100) / 100;
-  const account = { id: DISCOVER_ACCOUNT_ID, name: DISCOVER_ACCOUNT_NAME, institution: "Discover", type: "credit", balance, openingBalance: 0 };
-  const transactions = DISCOVER_REGISTER_IMPORT.map(t => ({
-    id: uid(), date: t.date, accountId: DISCOVER_ACCOUNT_ID, merchant: t.merchant,
-    category: t.category, amount: t.amount, notes: DISCOVER_IMPORT_NOTE, person: t.person, cleared: true,
-  }));
-  const subscriptions = DISCOVER_SUBSCRIPTIONS_FOUND.map(s => ({
-    id: s.id, merchant: s.merchant, category: s.category, cadence: "Monthly", amount: s.amount,
-    dayOfMonth: s.dayOfMonth, active: s.active, priceHistory: [{ date: s.lastDate, amount: s.amount }], person: s.person,
-  }));
-  return { account, transactions, subscriptions };
-}
-
-function ensureDiscoverRegister(data) {
-  let accounts = data.accounts || [];
-  let transactions = data.transactions || [];
-  let subscriptions = data.subscriptions || [];
-
-  const hasAccount = accounts.some(a => a.id === DISCOVER_ACCOUNT_ID || a.name === DISCOVER_ACCOUNT_NAME);
-  const hasImport = transactions.some(t => t.notes === DISCOVER_IMPORT_NOTE);
-  const hasSubs = DISCOVER_SUBSCRIPTIONS_FOUND.every(s => subscriptions.some(x => x.id === s.id));
-  if (hasAccount && hasImport && hasSubs) return data; // already fully up to date
-
-  const { account, transactions: importedTx, subscriptions: foundSubs } = buildDiscoverRegisterAdditions();
-  accounts = hasAccount
-    ? accounts.map(a => (a.id === DISCOVER_ACCOUNT_ID || a.name === DISCOVER_ACCOUNT_NAME) ? { ...a, balance: account.balance, institution: account.institution } : a)
-    : [...accounts, account];
-  if (!hasSubs) {
-    foundSubs.forEach(s => { if (!subscriptions.some(x => x.id === s.id)) subscriptions = [...subscriptions, s]; });
-  }
-  if (!hasImport) {
-    transactions = [...importedTx, ...transactions].sort((a, b) => (a.date < b.date ? 1 : -1));
-  }
-
-  return { ...data, accounts, transactions, subscriptions };
-}
+/* Private embedded registers removed from this public build. */
+function ensureCindyRegister(data) { return data; }
+function ensureHouseholdRegisters(data) { return data; }
+function ensureDiscoverRegister(data) { return data; }
+function ensureUserNamedSubscriptions(data) { return data; }
 
 function loadData() {
   let data = null;
@@ -1174,12 +695,24 @@ function loadData() {
   data = ensureHouseholdRegisters(data);
   data = ensureDiscoverRegister(data);
   data = ensureUserNamedSubscriptions(data);
+  data = {
+    ...data,
+    sinkingFunds: data.sinkingFunds || [],
+    reconciliations: data.reconciliations || {},
+    privacyPrefs: data.privacyPrefs || { hideBalances: false, viewer: "Household" },
+    notificationPrefs: data.notificationPrefs || { enabled: false },
+    auditLog: data.auditLog || [],
+  };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   return data;
 }
 
 function saveData(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 }
 
 /* ============================== SMALL UI PRIMITIVES ============================== */
@@ -1850,6 +1383,8 @@ function Budgets({ data, actions, derived }) {
           );
         })}
       </div>
+
+      <RolloverAndSinkingFunds data={data} actions={actions} />
 
       <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -4008,6 +3543,8 @@ function Accounts({ data, actions, derived }) {
 
       <DebtPayoffPlanner debtAccounts={debtAccounts} />
 
+      <ReconciliationPanel data={data} actions={actions} />
+
       <AccountModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={save} initial={editing} />
     </div>
   );
@@ -4309,6 +3846,119 @@ function AIAssistant({ data, actions, derived }) {
   );
 }
 
+/* ============================== ROLLOVERS, SINKING FUNDS & RECONCILIATION ============================== */
+
+function RolloverAndSinkingFunds({ data, actions }) {
+  const [name, setName] = useState("");
+  const [target, setTarget] = useState("");
+  const [monthly, setMonthly] = useState("");
+  const rollovers = data.budgetRollovers || {};
+  const funds = data.sinkingFunds || [];
+  const previousMonth = "2026-06";
+
+  const priorSpend = useMemo(() => {
+    const totals = {};
+    data.transactions.filter(t => monthKey(t.date) === previousMonth && t.amount < 0).forEach(t => {
+      totals[t.category] = (totals[t.category] || 0) + (-t.amount);
+    });
+    return totals;
+  }, [data.transactions]);
+
+  const addFund = () => {
+    const clean = name.trim();
+    const goal = parseFloat(target);
+    if (!clean || !goal || goal <= 0) return;
+    actions.addSinkingFund({ id: uid(), name: clean, target: goal, current: 0, monthly: Math.max(0, parseFloat(monthly) || 0) });
+    setName(""); setTarget(""); setMonthly("");
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <Card className="p-5">
+        <h3 className="font-semibold text-slate-700">Rollover Budgets</h3>
+        <p className="text-sm text-slate-500 mt-1 mb-4">Carry unused June budget into July for categories that vary month to month.</p>
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {EXPENSE_CATEGORIES.map(cat => {
+            const carry = Math.max(0, (data.budgets[cat] || 0) - (priorSpend[cat] || 0));
+            return (
+              <label key={cat} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2">
+                <span className="text-sm text-slate-600">{cat}</span>
+                <span className="flex items-center gap-3">
+                  {rollovers[cat] && <span className="text-xs font-medium text-emerald-600">+{fmtCurrency(carry, { decimals: false })}</span>}
+                  <input type="checkbox" checked={!!rollovers[cat]} onChange={() => actions.toggleBudgetRollover(cat)} />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="font-semibold text-slate-700">Sinking Funds</h3>
+        <p className="text-sm text-slate-500 mt-1 mb-4">Save gradually for irregular expenses without distorting the monthly budget.</p>
+        <div className="space-y-3 mb-4">
+          {funds.length === 0 && <p className="text-sm text-slate-400">No sinking funds yet.</p>}
+          {funds.map(f => (
+            <div key={f.id} className="rounded-xl border border-slate-100 p-3">
+              <div className="flex justify-between gap-3 text-sm">
+                <span className="font-medium text-slate-700">{f.name}</span>
+                <span className="text-slate-500">{fmtCurrency(f.current)} / {fmtCurrency(f.target)}</span>
+              </div>
+              <ProgressBar pct={(f.current / f.target) * 100} color="#0ea5e9" />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-slate-400">{fmtCurrency(f.monthly)} planned monthly</span>
+                <span className="flex gap-2">
+                  <button className="text-xs text-indigo-600 font-medium" onClick={() => actions.contributeSinkingFund(f.id, f.monthly || 25)}>Add monthly</button>
+                  <button className="text-xs text-rose-500 font-medium" onClick={() => actions.deleteSinkingFund(f.id)}>Delete</button>
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <input className={inputClass} placeholder="Fund name" value={name} onChange={e => setName(e.target.value)} />
+          <input type="number" className={inputClass} placeholder="Target" value={target} onChange={e => setTarget(e.target.value)} />
+          <input type="number" className={inputClass} placeholder="Monthly" value={monthly} onChange={e => setMonthly(e.target.value)} />
+        </div>
+        <Button className="mt-3" onClick={addFund}>+ Add Sinking Fund</Button>
+      </Card>
+    </div>
+  );
+}
+
+function ReconciliationPanel({ data, actions }) {
+  const [values, setValues] = useState({});
+  const reconciliations = data.reconciliations || {};
+
+  return (
+    <Card className="p-6">
+      <h3 className="font-semibold text-slate-700">Statement Reconciliation</h3>
+      <p className="text-sm text-slate-500 mt-1 mb-4">Compare each tracker balance with the latest bank or card statement.</p>
+      <div className="space-y-3">
+        {data.accounts.map(a => {
+          const entered = values[a.id] == null ? "" : values[a.id];
+          const statement = entered === "" ? null : parseFloat(entered);
+          const difference = statement == null || isNaN(statement) ? null : statement - a.balance;
+          const saved = reconciliations[a.id];
+          return (
+            <div key={a.id} className="grid grid-cols-1 md:grid-cols-[1fr_180px_140px_auto] gap-3 items-center rounded-xl border border-slate-100 p-3">
+              <div>
+                <div className="text-sm font-medium text-slate-700">{a.name}</div>
+                <div className="text-xs text-slate-400">Tracker: {fmtCurrency(a.balance)}{saved ? ` · Last checked ${fmtDateShort(saved.date)}` : ""}</div>
+              </div>
+              <input type="number" step="0.01" className={inputClass} placeholder="Statement balance" value={entered} onChange={e => setValues({ ...values, [a.id]: e.target.value })} />
+              <div className={"text-sm font-medium " + (difference === 0 ? "text-emerald-600" : difference == null ? "text-slate-400" : "text-amber-600")}>
+                {difference == null ? "Enter balance" : difference === 0 ? "Matches" : `Off by ${fmtCurrency(difference)}`}
+              </div>
+              <Button variant="secondary" disabled={difference == null} onClick={() => actions.reconcileAccount(a.id, statement, difference)}>Save Check</Button>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 /* ============================== SETTINGS (BACKUP & RESTORE) ============================== */
 
 const LAST_BACKUP_STORAGE = "meridian_money_last_backup";
@@ -4404,6 +4054,54 @@ function Settings({ data, actions }) {
       </Card>
 
       <Card className="p-5">
+        <h3 className="font-semibold text-slate-700">🔒 Household Privacy</h3>
+        <p className="text-sm text-slate-500 mt-1">These controls change what is visible on this device. They are not a replacement for Supabase authentication later.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <Field label="Current view">
+            <select className={inputClass} value={(data.privacyPrefs || {}).viewer || "Household"} onChange={e => actions.setPrivacyPrefs({ viewer: e.target.value })}>
+              <option value="Household">Household — show everything</option>
+              <option value="Michael">Michael — joint and Michael items</option>
+              <option value="Cynthia">Cynthia — joint and Cynthia items</option>
+            </select>
+          </Field>
+          <div>
+            <div className="text-sm font-medium text-slate-600 mb-1.5">Screen privacy</div>
+            <Button variant="secondary" onClick={() => actions.setPrivacyPrefs({ hideBalances: true })}>Hide financial details</Button>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <h3 className="font-semibold text-slate-700">🔔 Budget Reminders</h3>
+        <p className="text-sm text-slate-500 mt-1">Show browser reminders for overspending and upcoming bills while the app is open.</p>
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <Button variant="secondary" onClick={actions.enableNotifications}>
+            {(data.notificationPrefs || {}).enabled ? "Notifications enabled" : "Enable notifications"}
+          </Button>
+          <span className="text-xs text-slate-400">Your browser may ask for permission.</span>
+        </div>
+      </Card>
+
+      <Card className="p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-slate-700">↶ Undo & Change History</h3>
+            <p className="text-sm text-slate-500 mt-1">Undo the most recent change or review activity recorded on this device.</p>
+          </div>
+          <Button variant="secondary" disabled={!actions.canUndo} onClick={actions.undo}>Undo Last Change</Button>
+        </div>
+        <div className="mt-4 divide-y divide-slate-100">
+          {(data.auditLog || []).slice(-8).reverse().map((entry, i) => (
+            <div key={i} className="py-2 flex items-center justify-between gap-3 text-xs">
+              <span className="text-slate-600">{entry.label || "Budget data updated"}</span>
+              <span className="text-slate-400">{new Date(entry.at).toLocaleString()}</span>
+            </div>
+          ))}
+          {(data.auditLog || []).length === 0 && <div className="text-sm text-slate-400 py-3">No changes recorded yet.</div>}
+        </div>
+      </Card>
+
+      <Card className="p-5">
         <h3 className="font-semibold text-slate-700">⚠️ Reset Demo Data</h3>
         <p className="text-sm text-slate-500 mt-1">Clear the fictional Michael &amp; Cynthia sample data. Your real imported registers (Cindy's Credit Card, Cindy's Checking, Mike's Checking, Savings, and HYSA) are kept, reset to their originally imported state.</p>
         <div className="mt-3">
@@ -4439,7 +4137,9 @@ const TAB_LABELS = {
 };
 
 function App() {
-  const [data, setData] = useState(loadData);
+  const [data, rawSetData] = useState(loadData);
+  const undoStack = useRef([]);
+  const [undoCount, setUndoCount] = useState(0);
   const [tab, setTab] = useState(() => {
     try {
       const saved = localStorage.getItem(ACTIVE_TAB_KEY);
@@ -4448,10 +4148,52 @@ function App() {
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const setData = (updater, label) => {
+    rawSetData(previous => {
+      const next = typeof updater === "function" ? updater(previous) : updater;
+      if (next === previous) return previous;
+      undoStack.current = [{ data: previous, label: label || "Budget data updated" }, ...undoStack.current].slice(0, 25);
+      setUndoCount(undoStack.current.length);
+      return {
+        ...next,
+        auditLog: [...(next.auditLog || []), { label: label || "Budget data updated", at: new Date().toISOString() }].slice(-100),
+      };
+    });
+  };
+
+  const undo = () => {
+    const item = undoStack.current.shift();
+    if (!item) return;
+    rawSetData(item.data);
+    setUndoCount(undoStack.current.length);
+  };
+
   useEffect(() => { saveData(data); }, [data]);
   useEffect(() => { try { localStorage.setItem(ACTIVE_TAB_KEY, tab); } catch (e) {} }, [tab]);
 
-  const derived = useDerived(data);
+  const viewer = (data.privacyPrefs || {}).viewer || "Household";
+  const visibleData = viewer === "Household"
+    ? data
+    : { ...data, transactions: data.transactions.filter(t => !t.person || t.person === "Joint" || t.person === viewer) };
+  const derived = useDerived(visibleData);
+
+  useEffect(() => {
+    if (!(data.notificationPrefs || {}).enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const today = new Date().toISOString().slice(0, 10);
+    const key = "meridian_money_alerted_" + today;
+    if (localStorage.getItem(key)) return;
+    const messages = [];
+    if (derived.budgetAlerts.length) {
+      const worst = [...derived.budgetAlerts].sort((a, b) => b.pct - a.pct)[0];
+      messages.push(`${worst.cat} is at ${worst.pct.toFixed(0)}% of budget.`);
+    }
+    const nextBill = derived.recurringItems.filter(b => !b.paid && b.dayOfMonth >= 27).sort((a, b) => a.dayOfMonth - b.dayOfMonth)[0];
+    if (nextBill) messages.push(`${nextBill.merchant} is due soon for ${fmtCurrency(nextBill.amount)}.`);
+    if (messages.length) {
+      new Notification("Michael & Cynthia's Money", { body: messages.join(" ") });
+      localStorage.setItem(key, "1");
+    }
+  }, [data.notificationPrefs && data.notificationPrefs.enabled, JSON.stringify(derived.budgetAlerts), JSON.stringify(derived.recurringItems)]);
 
   const actions = {
     addTransaction: (t) => setData(d => ({ ...d, transactions: [t, ...d.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)) })),
@@ -4472,6 +4214,10 @@ function App() {
     }),
 
     setBudget: (cat, val) => setData(d => ({ ...d, budgets: { ...d.budgets, [cat]: val } })),
+    toggleBudgetRollover: (cat) => setData(d => ({ ...d, budgetRollovers: { ...(d.budgetRollovers || {}), [cat]: !(d.budgetRollovers || {})[cat] } }), "Rollover setting changed"),
+    addSinkingFund: (fund) => setData(d => ({ ...d, sinkingFunds: [...(d.sinkingFunds || []), fund] }), "Sinking fund added"),
+    contributeSinkingFund: (id, amount) => setData(d => ({ ...d, sinkingFunds: (d.sinkingFunds || []).map(f => f.id === id ? { ...f, current: Math.min(f.target, f.current + amount) } : f) }), "Sinking fund contribution"),
+    deleteSinkingFund: (id) => setData(d => ({ ...d, sinkingFunds: (d.sinkingFunds || []).filter(f => f.id !== id) }), "Sinking fund deleted"),
 
     toggleSubscription: (id) => setData(d => ({ ...d, subscriptions: d.subscriptions.map(s => s.id === id ? { ...s, active: !s.active } : s) })),
     addSubscription: (s) => setData(d => ({ ...d, subscriptions: [...d.subscriptions, s] })),
@@ -4487,6 +4233,10 @@ function App() {
     addAccount: (a) => setData(d => ({ ...d, accounts: [...d.accounts, a] })),
     updateAccount: (a) => setData(d => ({ ...d, accounts: d.accounts.map(x => x.id === a.id ? a : x) })),
     deleteAccount: (id) => setData(d => ({ ...d, accounts: d.accounts.filter(x => x.id !== id) })),
+    reconcileAccount: (id, statementBalance, difference) => setData(d => ({
+      ...d,
+      reconciliations: { ...(d.reconciliations || {}), [id]: { date: new Date().toISOString().slice(0, 10), statementBalance, difference } },
+    }), "Account reconciliation saved"),
 
     addRule: (r) => setData(d => ({ ...d, rules: [...(d.rules || []), r] })),
     deleteRule: (id) => setData(d => ({ ...d, rules: (d.rules || []).filter(r => r.id !== id) })),
@@ -4515,10 +4265,18 @@ function App() {
     setCindyNotes: (text) => setData(d => ({ ...d, cindyRegisterNotes: text })),
     setRegisterNotes: (accountId, text) => setData(d => ({ ...d, registerNotes: { ...(d.registerNotes || {}), [accountId]: text } })),
     setSectionNotes: (section, text) => setData(d => ({ ...d, sectionNotes: { ...(d.sectionNotes || {}), [section]: text } })),
+    setPrivacyPrefs: (prefs) => setData(d => ({ ...d, privacyPrefs: { ...(d.privacyPrefs || {}), ...prefs } }), "Privacy preference changed"),
+    enableNotifications: async () => {
+      if (typeof Notification === "undefined") return;
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") setData(d => ({ ...d, notificationPrefs: { enabled: true } }), "Budget reminders enabled");
+    },
+    undo,
+    canUndo: undoCount > 0,
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className={"flex h-screen overflow-hidden " + ((data.privacyPrefs || {}).hideBalances ? "privacy-screen" : "")}>
       <Sidebar tab={tab} setTab={setTab} netWorth={derived.netWorth} mobileOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} sectionNotes={data.sectionNotes} />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shrink-0">
@@ -4526,17 +4284,24 @@ function App() {
           <div className="font-semibold text-slate-800 truncate">{TAB_LABELS[tab] || "Menu"}</div>
         </div>
         <main className="flex-1 overflow-y-auto">
-          {tab === "dashboard" && <Dashboard data={data} derived={derived} actions={actions} />}
-          {tab === "budgets" && <Budgets data={data} actions={actions} derived={derived} />}
-          {tab === "transactions" && <Transactions data={data} actions={actions} />}
-          {tab === "subscriptions" && <Subscriptions data={data} actions={actions} />}
-          {tab === "cashflow" && <CashFlow data={data} derived={derived} actions={actions} />}
-          {tab === "goals" && <Goals data={data} actions={actions} />}
+          {tab === "dashboard" && <Dashboard data={visibleData} derived={derived} actions={actions} />}
+          {tab === "budgets" && <Budgets data={visibleData} actions={actions} derived={derived} />}
+          {tab === "transactions" && <Transactions data={visibleData} actions={actions} />}
+          {tab === "subscriptions" && <Subscriptions data={visibleData} actions={actions} />}
+          {tab === "cashflow" && <CashFlow data={visibleData} derived={derived} actions={actions} />}
+          {tab === "goals" && <Goals data={visibleData} actions={actions} />}
           {tab === "accounts" && <Accounts data={data} actions={actions} derived={derived} />}
           {tab === "ai" && <AIAssistant data={data} actions={actions} derived={derived} />}
           {tab === "settings" && <Settings data={data} actions={actions} />}
         </main>
       </div>
+      {(data.privacyPrefs || {}).hideBalances && (
+        <button className="fixed inset-0 z-[80] bg-slate-950/80 text-white flex flex-col items-center justify-center gap-3" onClick={() => actions.setPrivacyPrefs({ hideBalances: false })}>
+          <span className="text-4xl">🔒</span>
+          <span className="text-lg font-semibold">Financial details hidden</span>
+          <span className="text-sm text-slate-300">Click anywhere to reveal</span>
+        </button>
+      )}
     </div>
   );
 }
