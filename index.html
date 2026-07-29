@@ -1318,6 +1318,7 @@ function Budgets({ data, actions, derived }) {
   const [editCat, setEditCat] = useState(null);
   const [editVal, setEditVal] = useState("");
   const [trendCat, setTrendCat] = useState("Groceries");
+  const budgetCategories = allExpenseCategories(data);
 
   const totalBudget = Object.values(data.budgets).reduce((s, v) => s + v, 0);
   const totalSpent = Object.values(derived.spendByCategory).reduce((s, v) => s + v, 0);
@@ -1339,10 +1340,13 @@ function Budgets({ data, actions, derived }) {
           <h1 className="text-xl md:text-2xl font-bold text-slate-800">Budgets</h1>
           <p className="text-slate-500 text-sm mt-1">Monthly spending plan by category — {new Date("2026-07-27").toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
         </div>
-        <Card className="px-5 py-3 self-start sm:self-auto">
-          <div className="text-xs text-slate-400">Total Budget Used</div>
-          <div className="text-lg font-bold text-slate-800">{fmtCurrency(totalSpent, { decimals: false })} <span className="text-sm font-normal text-slate-400">/ {fmtCurrency(totalBudget, { decimals: false })}</span></div>
-        </Card>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Card className="px-5 py-3">
+            <div className="text-xs text-slate-400">Total Budget Used</div>
+            <div className="text-lg font-bold text-slate-800">{fmtCurrency(totalSpent, { decimals: false })} <span className="text-sm font-normal text-slate-400">/ {fmtCurrency(totalBudget, { decimals: false })}</span></div>
+          </Card>
+          <AddCategoryButton data={data} actions={actions} onAdded={openEdit} />
+        </div>
       </div>
 
       <SectionNotes section="budgets" data={data} actions={actions} />
@@ -1359,7 +1363,7 @@ function Budgets({ data, actions, derived }) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-        {EXPENSE_CATEGORIES.map(cat => {
+        {budgetCategories.map(cat => {
           const budget = data.budgets[cat] || 0;
           const spent = derived.spendByCategory[cat] || 0;
           const pct = budget > 0 ? (spent / budget) * 100 : 0;
@@ -1368,12 +1372,12 @@ function Budgets({ data, actions, derived }) {
             <Card key={cat} className="p-5">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{CATEGORY_META[cat].icon}</span>
+                  <span className="text-lg">{categoryIconOf(cat)}</span>
                   <span className="font-medium text-slate-700 text-sm">{cat}</span>
                 </div>
                 <button onClick={() => openEdit(cat)} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Edit</button>
               </div>
-              <ProgressBar pct={pct} color={over ? "#e11d48" : CATEGORY_META[cat].color} />
+              <ProgressBar pct={pct} color={over ? "#e11d48" : categoryColor(cat)} />
               <div className="flex items-center justify-between mt-2 text-xs">
                 <span className={over ? "text-rose-600 font-medium" : "text-slate-500"}>{fmtCurrency(spent, { decimals: false })} spent</span>
                 <span className="text-slate-400">of {fmtCurrency(budget, { decimals: false })}</span>
@@ -1390,13 +1394,13 @@ function Budgets({ data, actions, derived }) {
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <h3 className="font-semibold text-slate-700">Spending Trends</h3>
           <select className={inputClass + " max-w-[220px]"} value={trendCat} onChange={e => setTrendCat(e.target.value)}>
-            {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {budgetCategories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         {trendLabels.length === 0 ? (
           <div className="text-sm text-slate-400 py-10 text-center">Not enough history yet.</div>
         ) : (
-          <BarChartCanvas labels={trendLabels} values={trendValues} color={CATEGORY_META[trendCat].color} />
+          <BarChartCanvas labels={trendLabels} values={trendValues} color={categoryColor(trendCat)} />
         )}
       </Card>
 
@@ -3461,8 +3465,9 @@ function Accounts({ data, actions, derived }) {
     setModalOpen(false);
   };
 
-  const assetAccounts = data.accounts.filter(a => a.balance >= 0);
-  const debtAccounts = data.accounts.filter(a => a.balance < 0);
+  const debtAccounts = data.accounts.filter(a => a.type === "credit" || a.type === "loan" || a.balance < 0);
+  const debtIds = new Set(debtAccounts.map(a => a.id));
+  const assetAccounts = data.accounts.filter(a => !debtIds.has(a.id));
 
   return (
     <div className="p-4 md:p-8 space-y-5 md:space-y-6">
