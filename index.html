@@ -23,6 +23,11 @@
   ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   body { background: #f4f5f9; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
+  /* Stronger visual separation for cards and nested section containers. */
+  #root .rounded-2xl.border,
+  #root .rounded-xl.border {
+    border-width: 2px;
+  }
 </style>
 </head>
 <body class="text-slate-800">
@@ -769,7 +774,7 @@ if ("serviceWorker" in navigator) {
 /* ============================== SMALL UI PRIMITIVES ============================== */
 
 function Card({ children, className }) {
-  return <div className={"bg-white rounded-2xl border border-slate-200 shadow-sm " + (className || "")}>{children}</div>;
+  return <div className={"bg-white rounded-2xl border-2 border-slate-300 shadow-sm " + (className || "")}>{children}</div>;
 }
 
 function ProgressBar({ pct, color }) {
