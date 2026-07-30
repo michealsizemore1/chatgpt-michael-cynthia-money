@@ -722,6 +722,7 @@ function normalizeBudgetData(data) {
     recurringBills: data.recurringBills || [],
     rules: data.rules || [],
     investments: data.investments || [],
+    investmentContributions: data.investmentContributions || [],
     paidBills: data.paidBills || {},
     customCategories: data.customCategories || [],
     sinkingFunds: data.sinkingFunds || [],
@@ -3437,6 +3438,99 @@ function InvestmentAllocation({ investments }) {
   );
 }
 
+function InvestmentContributions({ data, actions }) {
+  const targets = [
+    ...(data.investments || []).map(i => ({ id: `holding:${i.id}`, name: i.name })),
+    ...data.accounts.filter(a => a.type === "investment").map(a => ({ id: `account:${a.id}`, name: a.name })),
+  ];
+  const [form, setForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    targetId: targets[0]?.id || "general",
+    amount: "",
+    note: "",
+  });
+  const contributions = [...(data.investmentContributions || [])].sort((a, b) => b.date.localeCompare(a.date));
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthTotal = contributions.filter(c => c.date.slice(0, 7) === currentMonth).reduce((sum, c) => sum + c.amount, 0);
+  const yearTotal = contributions.filter(c => c.date.slice(0, 4) === currentMonth.slice(0, 4)).reduce((sum, c) => sum + c.amount, 0);
+
+  const save = (e) => {
+    e.preventDefault();
+    const amount = parseFloat(form.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    const target = targets.find(t => t.id === form.targetId);
+    actions.addInvestmentContribution({
+      id: uid(),
+      date: form.date,
+      targetId: form.targetId,
+      targetName: target?.name || "General Investments",
+      amount,
+      note: form.note.trim(),
+    });
+    setForm(f => ({ ...f, amount: "", note: "" }));
+  };
+
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 className="font-semibold text-slate-700">Investment Contributions</h3>
+          <p className="text-sm text-slate-500 mt-1">Record money you contribute without changing the investment’s current market value.</p>
+        </div>
+        <div className="flex gap-2 text-center">
+          <div className="rounded-xl bg-indigo-50 px-3 py-2">
+            <div className="text-[10px] uppercase tracking-wide text-indigo-400">This month</div>
+            <div className="text-sm font-bold text-indigo-700">{fmtCurrency(monthTotal)}</div>
+          </div>
+          <div className="rounded-xl bg-emerald-50 px-3 py-2">
+            <div className="text-[10px] uppercase tracking-wide text-emerald-500">This year</div>
+            <div className="text-sm font-bold text-emerald-700">{fmtCurrency(yearTotal)}</div>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 items-end">
+        <Field label="Date">
+          <input type="date" className={inputClass} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} required />
+        </Field>
+        <Field label="Investment">
+          <select className={inputClass} value={form.targetId} onChange={e => setForm({ ...form, targetId: e.target.value })}>
+            {targets.length === 0 && <option value="general">General Investments</option>}
+            {targets.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </Field>
+        <Field label="Contribution ($)">
+          <input type="number" min="0.01" step="0.01" placeholder="0.00" className={inputClass} value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} required />
+        </Field>
+        <Field label="Note (optional)">
+          <input placeholder="401(k), IRA, brokerage…" className={inputClass} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} />
+        </Field>
+        <Button type="submit" className="h-[42px]">Add Contribution</Button>
+      </form>
+
+      {contributions.length > 0 && (
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Recent contributions</div>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {contributions.slice(0, 20).map(c => (
+              <div key={c.id} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-700 truncate">{c.targetName || "General Investments"}</div>
+                  <div className="text-xs text-slate-400">{fmtDate(c.date)}{c.note ? ` · ${c.note}` : ""}</div>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm font-semibold text-emerald-600">+{fmtCurrency(c.amount)}</span>
+                  <button type="button" className="text-xs text-rose-500 font-medium" onClick={() => actions.deleteInvestmentContribution(c.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function DebtPayoffPlanner({ debtAccounts }) {
   const [extra, setExtra] = useState(200);
   const [strategy, setStrategy] = useState("avalanche");
@@ -3604,6 +3698,8 @@ function Accounts({ data, actions, derived }) {
       </Card>
 
       <InvestmentAllocation investments={data.investments} />
+
+      <InvestmentContributions data={data} actions={actions} />
 
       {debtAccounts.length > 0 && (
         <Card className="p-6">
@@ -4475,6 +4571,14 @@ function App({ session, onSignOut }) {
       ...d,
       reconciliations: { ...(d.reconciliations || {}), [id]: { date: new Date().toISOString().slice(0, 10), statementBalance, difference } },
     }), "Account reconciliation saved"),
+    addInvestmentContribution: (contribution) => setData(d => ({
+      ...d,
+      investmentContributions: [...(d.investmentContributions || []), contribution],
+    }), "Investment contribution added"),
+    deleteInvestmentContribution: (id) => setData(d => ({
+      ...d,
+      investmentContributions: (d.investmentContributions || []).filter(c => c.id !== id),
+    }), "Investment contribution deleted"),
 
     addRule: (r) => setData(d => ({ ...d, rules: [...(d.rules || []), r] })),
     deleteRule: (id) => setData(d => ({ ...d, rules: (d.rules || []).filter(r => r.id !== id) })),
