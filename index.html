@@ -833,7 +833,7 @@ function Button({ children, onClick, variant, className, type, disabled }) {
   );
 }
 
-function AddCategoryButton({ data, actions, onAdded }) {
+function AddCategoryButton({ data, actions, onAdded, showLabel }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -857,8 +857,8 @@ function AddCategoryButton({ data, actions, onAdded }) {
         type="button"
         title="Add a new category"
         onClick={openModal}
-        className="w-8 h-8 shrink-0 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 flex items-center justify-center text-sm font-bold"
-      >+</button>
+        className={(showLabel ? "h-9 px-3 gap-1.5 " : "w-8 h-8 ") + "shrink-0 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-indigo-600 inline-flex items-center justify-center text-sm font-bold"}
+      ><span>+</span>{showLabel && <span>Add Category</span>}</button>
       <Modal open={open} onClose={close} title="Add Category">
         <Field label="Category name">
           <input
@@ -1749,7 +1749,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
         </div>
         <div className="text-right">
           <div className="text-xs text-indigo-100 uppercase tracking-wide">Total Owed</div>
-          <div className="text-2xl font-bold">{fmtCurrency(totalOwed, { decimals: false })}</div>
+          <div className="text-2xl font-bold">{fmtCurrency(totalOwed)}</div>
         </div>
       </div>
 
@@ -1758,7 +1758,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
           <RegStat label="Cleared Expenses" value={fmtCurrency(clearedExpenses)} tone="rose" />
           <RegStat label="Cleared Returns" value={fmtCurrency(clearedReturns)} tone="emerald" />
           <RegStat label="Cleared Payments" value={fmtCurrency(clearedPayments)} tone="indigo" />
-          <RegStat label="Total Owed" value={fmtCurrency(totalOwed, { decimals: false })} tone="slate" />
+          <RegStat label="Total Owed" value={fmtCurrency(totalOwed)} tone="slate" />
           <RegStat label="Uncleared Charges" value={fmtCurrency(unclearedCharges)} tone="amber" />
           <RegStat label="Uncleared Returns" value={fmtCurrency(unclearedReturns)} tone="sky" />
         </div>
@@ -1892,7 +1892,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
                     <td className="px-3 py-3"><Pill tone={CINDY_TYPE_META[rt].tone}>{CINDY_TYPE_META[rt].short}</Pill></td>
-                    <td className="px-3 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtCurrency(balanceById[t.id] ?? 0, { decimals: false })}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtCurrency(balanceById[t.id] ?? 0)}</td>
                     <td className="px-3 py-3 text-right opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       <button className="text-slate-400 hover:text-indigo-600 mr-2" title="Edit" onClick={() => startEdit(t)}>✏️</button>
                       <button className="text-slate-400 hover:text-rose-500" title="Delete" onClick={() => removeTx(t.id)}>✕</button>
@@ -2042,7 +2042,7 @@ function BankAccountRegister({ data, actions, account }) {
         </div>
         <div className="text-right">
           <div className="text-xs text-teal-100 uppercase tracking-wide">Balance</div>
-          <div className="text-2xl font-bold">{fmtCurrency(totalBalance, { decimals: false })}</div>
+          <div className="text-2xl font-bold">{fmtCurrency(totalBalance)}</div>
         </div>
       </div>
 
@@ -2050,8 +2050,8 @@ function BankAccountRegister({ data, actions, account }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 md:gap-3">
           <RegStat label="Cleared Deposits" value={fmtCurrency(clearedDeposits)} tone="emerald" />
           <RegStat label="Cleared Withdrawals" value={fmtCurrency(clearedWithdrawals)} tone="rose" />
-          <RegStat label="Available Balance" value={fmtCurrency(availableBalance, { decimals: false })} tone="indigo" />
-          <RegStat label="Total Balance" value={fmtCurrency(totalBalance, { decimals: false })} tone="slate" />
+          <RegStat label="Available Balance" value={fmtCurrency(availableBalance)} tone="indigo" />
+          <RegStat label="Total Balance" value={fmtCurrency(totalBalance)} tone="slate" />
           <RegStat label="Uncleared Deposits" value={fmtCurrency(unclearedDeposits)} tone="sky" />
           <RegStat label="Uncleared Withdrawals" value={fmtCurrency(unclearedWithdrawals)} tone="amber" />
         </div>
@@ -2174,7 +2174,7 @@ function BankAccountRegister({ data, actions, account }) {
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
                     <td className="px-3 py-3"><Pill tone={isDeposit ? "green" : "red"}>{isDeposit ? "Deposit" : "Withdrawal"}</Pill></td>
-                    <td className="px-3 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtCurrency(balanceById[t.id] ?? 0, { decimals: false })}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtCurrency(balanceById[t.id] ?? 0)}</td>
                     <td className="px-3 py-3 text-right opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap">
                       <button className="text-slate-400 hover:text-indigo-600 mr-2" title="Edit" onClick={() => startEdit(t)}>✏️</button>
                       <button className="text-slate-400 hover:text-rose-500" title="Delete" onClick={() => removeTx(t.id)}>✕</button>
@@ -2201,6 +2201,7 @@ function BankAccountRegister({ data, actions, account }) {
 
 function AccountsAndCards({ data, actions }) {
   const [activeTab, setActiveTab] = useState("cc");
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
 
   const ccAccount = data.accounts.find(a => a.id === CINDY_CC_ACCOUNT_ID || a.name === CINDY_CC_ACCOUNT_NAME);
   const chkAccount = data.accounts.find(a => a.id === CHK_ACCOUNT_ID);
@@ -2209,7 +2210,7 @@ function AccountsAndCards({ data, actions }) {
   const hysaAccount = data.accounts.find(a => a.id === HYSA_ACCOUNT_ID);
   const discoverAccount = data.accounts.find(a => a.id === DISCOVER_ACCOUNT_ID || a.name === DISCOVER_ACCOUNT_NAME);
 
-  const tabs = [
+  const knownTabs = [
     { key: "cc", label: "💳 Credit Card", account: ccAccount, kind: "credit" },
     { key: "chk", label: "🏦 Cindy's Checking", account: chkAccount, kind: "bank" },
     { key: "mike", label: "🏦 Mike's Checking", account: mikeAccount, kind: "bank" },
@@ -2217,6 +2218,16 @@ function AccountsAndCards({ data, actions }) {
     { key: "hysa", label: "💰 HYSA", account: hysaAccount, kind: "bank" },
     { key: "discover", label: "💳 Discovercard", account: discoverAccount, kind: "bank" },
   ].filter(t => t.account);
+  const knownIds = new Set(knownTabs.map(t => t.account.id));
+  const otherTabs = data.accounts
+    .filter(account => !knownIds.has(account.id))
+    .map(account => ({
+      key: "account_" + account.id,
+      label: (account.type === "credit" ? "💳 " : "🏦 ") + account.name,
+      account,
+      kind: "bank",
+    }));
+  const tabs = [...knownTabs, ...otherTabs].sort((a, b) => a.account.name.localeCompare(b.account.name));
 
   if (tabs.length === 0) return null;
   const active = tabs.find(t => t.key === activeTab) || tabs[0];
@@ -2226,6 +2237,10 @@ function AccountsAndCards({ data, actions }) {
       <div>
         <h2 className="text-lg md:text-xl font-bold text-slate-800">🗂️ Accounts &amp; Cards</h2>
         <p className="text-sm text-slate-500 mt-0.5">Your household transaction registers — credit cards, both checking accounts, savings, and the HYSA.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <AddCategoryButton data={data} actions={actions} showLabel={true} />
+        <Button variant="secondary" onClick={() => setAccountModalOpen(true)}>+ Add Account/Card</Button>
       </div>
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => (
@@ -2238,6 +2253,11 @@ function AccountsAndCards({ data, actions }) {
       {active.kind === "credit"
         ? <CindyCreditCardRegister data={data} actions={actions} cindyAccount={active.account} />
         : <BankAccountRegister data={data} actions={actions} account={active.account} />}
+      <AccountModal
+        open={accountModalOpen}
+        onClose={() => setAccountModalOpen(false)}
+        onSave={account => { actions.addAccount({ ...account, id: uid() }); setAccountModalOpen(false); }}
+      />
     </div>
   );
 }
@@ -2496,11 +2516,19 @@ function Transactions({ data, actions }) {
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const [presetAccountId, setPresetAccountId] = useState(null);
   const [expandedIds, setExpandedIds] = useState(() => new Set());
-  const [sectionOpen, setSectionOpen] = useState(true);
+  const [sectionOpen, setSectionOpen] = useState(() => {
+    try { return sessionStorage.getItem("meridian_transactions_section_open") === "true"; }
+    catch (e) { return false; }
+  });
   const [importOpen, setImportOpen] = useState(false);
   const [markingSub, setMarkingSub] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkMoveAccountId, setBulkMoveAccountId] = useState("");
+
+  useEffect(() => {
+    try { sessionStorage.setItem("meridian_transactions_section_open", String(sectionOpen)); }
+    catch (e) {}
+  }, [sectionOpen]);
 
   const toggleExpand = (id) => setExpandedIds(prev => {
     const next = new Set(prev);
