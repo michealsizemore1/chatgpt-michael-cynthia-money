@@ -1725,6 +1725,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   const [descriptionSort, setDescriptionSort] = useState(null);
   const [notes, setNotes] = useState(data.cindyRegisterNotes || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
+  const [splitting, setSplitting] = useState(null);
   const editFormRef = useRef(null);
 
   const allTx = useMemo(() => data.transactions.filter(t => t.accountId === cindyAccount.id), [data.transactions, cindyAccount.id]);
@@ -2006,6 +2007,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
                         {t.receipt && (
                           <button type="button" title="View receipt" className="text-slate-400 hover:text-indigo-600" onClick={() => setViewingReceipt(t.receipt)}>📎</button>
                         )}
+                        <button type="button" className="text-xs font-medium text-indigo-600" title="Split across categories" onClick={() => setSplitting(t)}>Split</button>
                       </div>
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
@@ -2029,6 +2031,12 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
       <Modal open={!!viewingReceipt} onClose={() => setViewingReceipt(null)} title="Receipt">
         {viewingReceipt && <img src={viewingReceipt} className="w-full rounded-lg" alt="Receipt" />}
       </Modal>
+      <SplitTransactionModal
+        transaction={splitting}
+        data={data}
+        onClose={() => setSplitting(null)}
+        onSplit={(parts) => { actions.splitTransaction(splitting, parts); setSplitting(null); }}
+      />
     </Card>
   );
 }
@@ -2053,6 +2061,7 @@ function BankAccountRegister({ data, actions, account }) {
   const [descriptionSort, setDescriptionSort] = useState(null);
   const [notes, setNotes] = useState((data.registerNotes && data.registerNotes[account.id]) || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
+  const [splitting, setSplitting] = useState(null);
   const editFormRef = useRef(null);
 
   const opening = account.openingBalance || 0;
@@ -2322,6 +2331,7 @@ function BankAccountRegister({ data, actions, account }) {
                         {t.receipt && (
                           <button type="button" title="View receipt" className="text-slate-400 hover:text-indigo-600" onClick={() => setViewingReceipt(t.receipt)}>📎</button>
                         )}
+                        <button type="button" className="text-xs font-medium text-indigo-600" title="Split across categories" onClick={() => setSplitting(t)}>Split</button>
                       </div>
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
@@ -2345,6 +2355,12 @@ function BankAccountRegister({ data, actions, account }) {
       <Modal open={!!viewingReceipt} onClose={() => setViewingReceipt(null)} title="Receipt">
         {viewingReceipt && <img src={viewingReceipt} className="w-full rounded-lg" alt="Receipt" />}
       </Modal>
+      <SplitTransactionModal
+        transaction={splitting}
+        data={data}
+        onClose={() => setSplitting(null)}
+        onSplit={(parts) => { actions.splitTransaction(splitting, parts); setSplitting(null); }}
+      />
     </Card>
   );
 }
