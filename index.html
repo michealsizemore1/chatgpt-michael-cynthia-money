@@ -1886,6 +1886,10 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   const filteredCategoryTotal = catFilter === "All"
     ? 0
     : filtered.reduce((sum, t) => sum + transactionCategoryAmount(t, catFilter), 0);
+  const filteredTransactionTotal = catFilter === "All"
+    ? filtered.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    : filteredCategoryTotal;
+  const hasActiveTransactionFilter = !!(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate);
 
   const sorted = useMemo(() => {
     const byDateDesc = [...filtered].sort((a, b) => {
@@ -2096,13 +2100,15 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          {catFilter !== "All" && (
+          {hasActiveTransactionFilter && (
             <div className="mt-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-4 py-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Selected category total</div>
-                <div className="text-sm font-medium text-indigo-800 mt-0.5">{catFilter} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Filtered transactions total</div>
+                <div className="text-sm font-medium text-indigo-800 mt-0.5">
+                  {search ? `Description: ${search}` : catFilter !== "All" ? catFilter : typeFilter !== "All" ? typeFilter : "Selected dates"} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}
+                </div>
               </div>
-              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredCategoryTotal)}</div>
+              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredTransactionTotal)}</div>
             </div>
           )}
           <div className="flex items-center justify-end gap-3 mt-3 flex-wrap">
@@ -2270,6 +2276,10 @@ function BankAccountRegister({ data, actions, account }) {
   const filteredCategoryTotal = catFilter === "All"
     ? 0
     : filtered.reduce((sum, t) => sum + transactionCategoryAmount(t, catFilter), 0);
+  const filteredTransactionTotal = catFilter === "All"
+    ? filtered.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    : filteredCategoryTotal;
+  const hasActiveTransactionFilter = !!(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate);
 
   const sorted = useMemo(() => {
     const byDateDesc = [...filtered].sort((a, b) => {
@@ -2468,13 +2478,15 @@ function BankAccountRegister({ data, actions, account }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          {catFilter !== "All" && (
+          {hasActiveTransactionFilter && (
             <div className="mt-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-4 py-3 flex items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Selected category total</div>
-                <div className="text-sm font-medium text-indigo-800 mt-0.5">{catFilter} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Filtered transactions total</div>
+                <div className="text-sm font-medium text-indigo-800 mt-0.5">
+                  {search ? `Description: ${search}` : catFilter !== "All" ? catFilter : dirFilter !== "All" ? dirFilter : "Selected dates"} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}
+                </div>
               </div>
-              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredCategoryTotal)}</div>
+              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredTransactionTotal)}</div>
             </div>
           )}
           <div className="flex items-center justify-end gap-3 mt-3 flex-wrap">
