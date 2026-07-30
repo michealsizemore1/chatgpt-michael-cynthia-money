@@ -1726,9 +1726,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   const [notes, setNotes] = useState(data.cindyRegisterNotes || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const [splitting, setSplitting] = useState(null);
-  const [splitSelectedId, setSplitSelectedId] = useState("");
   const editFormRef = useRef(null);
-  const splitSectionRef = useRef(null);
 
   const allTx = useMemo(() => data.transactions.filter(t => t.accountId === cindyAccount.id), [data.transactions, cindyAccount.id]);
 
@@ -1776,6 +1774,29 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   }, [filtered, unclearedFirst, descriptionSort]);
 
   const resetForm = () => setForm(blankForm);
+
+  const startDraftSplit = () => {
+    const amt = parseFloat(form.amount);
+    if (!form.desc.trim() || isNaN(amt) || amt <= 0 || !form.date) return;
+    const category = form.regType === "payment" ? "Transfer" : form.category;
+    const amount = form.regType === "expense" ? -Math.abs(amt) : Math.abs(amt);
+    setSplitting({
+      id: uid(), date: form.date, merchant: form.desc.trim(), amount, category,
+      accountId: cindyAccount.id, person: form.who, receipt: form.receipt || null,
+      cleared: false, isDraftSplit: true,
+    });
+  };
+
+  const saveSplit = (parts) => {
+    if (splitting?.isDraftSplit) {
+      actions.addSplitTransactions(splitting, parts);
+      applyBalance([...allTx, splitting]);
+      resetForm();
+    } else {
+      actions.splitTransaction(splitting, parts);
+    }
+    setSplitting(null);
+  };
 
   const startEdit = (t) => {
     setForm({
@@ -1867,7 +1888,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
             <div className="col-span-2 lg:col-span-4">
               <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Description</label>
               <input placeholder="Description" className={inputClass} value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
-              <Button variant="secondary" className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={() => splitSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>Split Transaction</Button>
+              <Button variant="secondary" disabled={!form.desc.trim() || !(parseFloat(form.amount) > 0) || !form.date} className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={startDraftSplit}>Split Transaction</Button>
             </div>
             <div className="col-span-1 lg:col-span-2">
               <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Expense amount</label>
@@ -1969,23 +1990,6 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
           />
         </div>
 
-        <div ref={splitSectionRef} className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3 scroll-mt-4">
-          <div className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">Split a transaction into categories</div>
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <select className={inputClass} value={splitSelectedId} onChange={e => setSplitSelectedId(e.target.value)}>
-              <option value="">Choose a transaction…</option>
-              {sorted.map(t => <option key={t.id} value={t.id}>{fmtDateShort(t.date)} · {t.merchant} · {fmtCurrency(Math.abs(t.amount))}</option>)}
-            </select>
-            <Button
-              disabled={!splitSelectedId}
-              onClick={() => {
-                const chosen = allTx.find(t => t.id === splitSelectedId);
-                if (chosen) setSplitting(chosen);
-              }}
-            >Split Transaction</Button>
-          </div>
-        </div>
-
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="text-sm font-semibold text-slate-700">Transactions <span className="text-slate-400 font-normal">({sorted.length})</span></div>
           <div className="flex gap-2">
@@ -2037,7 +2041,6 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
                         {t.receipt && (
                           <button type="button" title="View receipt" className="text-slate-400 hover:text-indigo-600" onClick={() => setViewingReceipt(t.receipt)}>📎</button>
                         )}
-                        <button type="button" className="text-xs font-medium text-indigo-600" title="Split across categories" onClick={() => setSplitting(t)}>Split</button>
                       </div>
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
@@ -2065,7 +2068,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
         transaction={splitting}
         data={data}
         onClose={() => setSplitting(null)}
-        onSplit={(parts) => { actions.splitTransaction(splitting, parts); setSplitting(null); }}
+        onSplit={saveSplit}
       />
     </Card>
   );
@@ -2092,9 +2095,7 @@ function BankAccountRegister({ data, actions, account }) {
   const [notes, setNotes] = useState((data.registerNotes && data.registerNotes[account.id]) || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const [splitting, setSplitting] = useState(null);
-  const [splitSelectedId, setSplitSelectedId] = useState("");
   const editFormRef = useRef(null);
-  const splitSectionRef = useRef(null);
 
   const opening = account.openingBalance || 0;
   const allTx = useMemo(() => data.transactions.filter(t => t.accountId === account.id), [data.transactions, account.id]);
@@ -2143,6 +2144,29 @@ function BankAccountRegister({ data, actions, account }) {
   }, [filtered, unclearedFirst, descriptionSort]);
 
   const resetForm = () => setForm(blankForm);
+
+  const startDraftSplit = () => {
+    const amt = parseFloat(form.amount);
+    if (!form.desc.trim() || isNaN(amt) || amt <= 0 || !form.date) return;
+    const amount = form.direction === "deposit" ? Math.abs(amt) : -Math.abs(amt);
+    setSplitting({
+      id: uid(), date: form.date, merchant: form.desc.trim(), amount,
+      category: form.category, accountId: account.id,
+      person: defaultPersonForAccount(account.id), receipt: form.receipt || null,
+      cleared: false, isDraftSplit: true,
+    });
+  };
+
+  const saveSplit = (parts) => {
+    if (splitting?.isDraftSplit) {
+      actions.addSplitTransactions(splitting, parts);
+      applyBalance([...allTx, splitting]);
+      resetForm();
+    } else {
+      actions.splitTransaction(splitting, parts);
+    }
+    setSplitting(null);
+  };
 
   const startEdit = (t) => {
     setForm({
@@ -2232,7 +2256,7 @@ function BankAccountRegister({ data, actions, account }) {
             <div className="col-span-2 lg:col-span-4">
               <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Description</label>
               <input placeholder="Description" className={inputClass} value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
-              <Button variant="secondary" className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={() => splitSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>Split Transaction</Button>
+              <Button variant="secondary" disabled={!form.desc.trim() || !(parseFloat(form.amount) > 0) || !form.date} className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={startDraftSplit}>Split Transaction</Button>
             </div>
             <div className="col-span-1 lg:col-span-2">
               <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Amount</label>
@@ -2324,23 +2348,6 @@ function BankAccountRegister({ data, actions, account }) {
           />
         </div>
 
-        <div ref={splitSectionRef} className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-3 scroll-mt-4">
-          <div className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">Split a transaction into categories</div>
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <select className={inputClass} value={splitSelectedId} onChange={e => setSplitSelectedId(e.target.value)}>
-              <option value="">Choose a transaction…</option>
-              {sorted.map(t => <option key={t.id} value={t.id}>{fmtDateShort(t.date)} · {t.merchant} · {fmtCurrency(Math.abs(t.amount))}</option>)}
-            </select>
-            <Button
-              disabled={!splitSelectedId}
-              onClick={() => {
-                const chosen = allTx.find(t => t.id === splitSelectedId);
-                if (chosen) setSplitting(chosen);
-              }}
-            >Split Transaction</Button>
-          </div>
-        </div>
-
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="text-sm font-semibold text-slate-700">Transactions <span className="text-slate-400 font-normal">({sorted.length})</span></div>
           <div className="flex gap-2">
@@ -2391,7 +2398,6 @@ function BankAccountRegister({ data, actions, account }) {
                         {t.receipt && (
                           <button type="button" title="View receipt" className="text-slate-400 hover:text-indigo-600" onClick={() => setViewingReceipt(t.receipt)}>📎</button>
                         )}
-                        <button type="button" className="text-xs font-medium text-indigo-600" title="Split across categories" onClick={() => setSplitting(t)}>Split</button>
                       </div>
                     </td>
                     <td className="px-3 py-3"><Pill tone="slate">{t.category}</Pill></td>
@@ -2419,7 +2425,7 @@ function BankAccountRegister({ data, actions, account }) {
         transaction={splitting}
         data={data}
         onClose={() => setSplitting(null)}
-        onSplit={(parts) => { actions.splitTransaction(splitting, parts); setSplitting(null); }}
+        onSplit={saveSplit}
       />
     </Card>
   );
@@ -5023,6 +5029,24 @@ function App({ session, onSignOut }) {
           .sort((a, b) => (a.date < b.date ? 1 : -1)),
       };
     }, "Transaction split"),
+    addSplitTransactions: (original, parts) => setData(d => {
+      const sign = original.amount < 0 ? -1 : 1;
+      const children = parts.map((part, index) => ({
+        ...original,
+        id: uid(),
+        amount: sign * Number(part.amount),
+        category: part.category,
+        notes: `${original.notes || ""}${original.notes ? " · " : ""}Split ${index + 1} of ${parts.length}`,
+        needsReview: false,
+        isDraftSplit: undefined,
+        splitGroupId: original.id,
+      }));
+      return {
+        ...d,
+        transactions: [...children, ...d.transactions]
+          .sort((a, b) => (a.date < b.date ? 1 : -1)),
+      };
+    }, "Split transaction added"),
     markTransactionReviewed: (id) => setData(d => ({
       ...d,
       transactions: d.transactions.map(t => t.id === id ? { ...t, needsReview: false } : t),
