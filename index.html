@@ -2234,10 +2234,11 @@ function AccountsAndCards({ data, actions }) {
     mike: "Mike's Checking Account",
     savings: "Savings",
   };
+  const requestedOrder = ["cc", "chk", "mike", "hysa", "savings"];
   const tabs = [...knownTabs, ...otherTabs]
     .filter(t => allowedIds.has(t.account.id))
     .map(t => ({ ...t, label: requestedLabels[t.key] || t.label }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+    .sort((a, b) => requestedOrder.indexOf(a.key) - requestedOrder.indexOf(b.key));
 
   if (tabs.length === 0) return null;
   const active = tabs.find(t => t.key === activeTab) || tabs[0];
