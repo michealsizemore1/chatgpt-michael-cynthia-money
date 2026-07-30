@@ -5420,19 +5420,24 @@ function App({ session, onSignOut }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shrink-0">
           <button onClick={() => setMobileMenuOpen(true)} className="text-slate-600 text-2xl leading-none px-1" aria-label="Open menu">☰</button>
-          <div className="font-semibold text-slate-800 truncate">{TAB_LABELS[tab] || "Menu"}</div>
-        </div>
-        <div className="shrink-0 bg-slate-50/90 border-b border-slate-200 px-4 md:px-8 py-1 flex items-center justify-center">
+          <div className="font-semibold text-slate-800 truncate flex-1">{TAB_LABELS[tab] || "Menu"}</div>
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm px-2.5 py-1 flex items-center gap-2 max-w-full">
             <span className={"w-1.5 h-1.5 rounded-full shrink-0 " + (cloud.status === "Synced" ? "bg-emerald-500" : cloud.error ? "bg-rose-500" : "bg-amber-400")}></span>
             <div className="min-w-0">
               <div className="text-[10px] leading-tight font-medium text-slate-700 truncate">{cloud.status}</div>
-              <div className="hidden sm:block text-[9px] leading-tight text-slate-400 truncate">{cloud.error || session.user.email}</div>
             </div>
             <button onClick={onSignOut} className="text-[10px] font-medium text-indigo-600 shrink-0">Sign out</button>
           </div>
         </div>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative">
+          <div className="hidden md:flex absolute top-6 right-8 z-20 bg-white border border-slate-200 rounded-lg shadow-sm px-2.5 py-1 items-center gap-2 max-w-[260px]">
+            <span className={"w-1.5 h-1.5 rounded-full shrink-0 " + (cloud.status === "Synced" ? "bg-emerald-500" : cloud.error ? "bg-rose-500" : "bg-amber-400")}></span>
+            <div className="min-w-0">
+              <div className="text-[10px] leading-tight font-medium text-slate-700 truncate">{cloud.status}</div>
+              <div className="text-[9px] leading-tight text-slate-400 truncate">{cloud.error || session.user.email}</div>
+            </div>
+            <button onClick={onSignOut} className="text-[10px] font-medium text-indigo-600 shrink-0">Sign out</button>
+          </div>
           {tab === "dashboard" && <Dashboard data={visibleData} derived={derived} actions={actions} />}
           {tab === "budgets" && <Budgets data={visibleData} actions={actions} derived={derived} />}
           {tab === "transactions" && <Transactions data={visibleData} actions={actions} />}
