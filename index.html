@@ -1904,25 +1904,43 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <input placeholder="Search description..." className={inputClass + " max-w-[180px]"} value={search} onChange={e => setSearch(e.target.value)} />
-          <select className={inputClass + " max-w-[160px]"} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-            <option value="All">All Categories</option>
-            {allExpenseCategories(data).concat(["Transfer"]).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className={inputClass + " max-w-[140px]"} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
-            <option value="All">All Types</option>
-            <option value="expense">Expense</option>
-            <option value="return">Return</option>
-            <option value="payment">Payment</option>
-          </select>
-          <input type="date" className={inputClass + " max-w-[150px]"} value={fromDate} onChange={e => setFromDate(e.target.value)} />
-          <span className="text-xs text-slate-400">to</span>
-          <input type="date" className={inputClass + " max-w-[150px]"} value={toDate} onChange={e => setToDate(e.target.value)} />
-          {(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate) && (
-            <button className="text-xs text-indigo-600 font-medium" onClick={clearFilters}>Clear</button>
-          )}
-          <Button variant="secondary" className="text-xs px-3 py-1.5 ml-auto" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+          <div className="grid grid-cols-2 md:grid-cols-12 gap-2">
+            <div className="col-span-2 md:col-span-3">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Search description</label>
+              <input placeholder="Merchant or description…" className={inputClass} value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div className="col-span-1 md:col-span-3">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Category</label>
+              <select className={inputClass} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+                <option value="All">All Categories</option>
+                {allExpenseCategories(data).concat(["Transfer"]).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Type</label>
+              <select className={inputClass} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+                <option value="All">All Types</option>
+                <option value="expense">Expense</option>
+                <option value="return">Return</option>
+                <option value="payment">Payment</option>
+              </select>
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">From</label>
+              <input type="date" className={inputClass} value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">To</label>
+              <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            {(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate) && (
+              <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+            )}
+            <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+          </div>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -2204,24 +2222,42 @@ function BankAccountRegister({ data, actions, account }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <input placeholder="Search description..." className={inputClass + " max-w-[180px]"} value={search} onChange={e => setSearch(e.target.value)} />
-          <select className={inputClass + " max-w-[160px]"} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
-            <option value="All">All Categories</option>
-            {allCategoriesFull(data).map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className={inputClass + " max-w-[140px]"} value={dirFilter} onChange={e => setDirFilter(e.target.value)}>
-            <option value="All">All Types</option>
-            <option value="deposit">Deposit</option>
-            <option value="withdrawal">Withdrawal</option>
-          </select>
-          <input type="date" className={inputClass + " max-w-[150px]"} value={fromDate} onChange={e => setFromDate(e.target.value)} />
-          <span className="text-xs text-slate-400">to</span>
-          <input type="date" className={inputClass + " max-w-[150px]"} value={toDate} onChange={e => setToDate(e.target.value)} />
-          {(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate) && (
-            <button className="text-xs text-indigo-600 font-medium" onClick={clearFilters}>Clear</button>
-          )}
-          <Button variant="secondary" className="text-xs px-3 py-1.5 ml-auto" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+          <div className="grid grid-cols-2 md:grid-cols-12 gap-2">
+            <div className="col-span-2 md:col-span-3">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Search description</label>
+              <input placeholder="Merchant or description…" className={inputClass} value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <div className="col-span-1 md:col-span-3">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Category</label>
+              <select className={inputClass} value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+                <option value="All">All Categories</option>
+                {allCategoriesFull(data).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Type</label>
+              <select className={inputClass} value={dirFilter} onChange={e => setDirFilter(e.target.value)}>
+                <option value="All">All Types</option>
+                <option value="deposit">Deposit</option>
+                <option value="withdrawal">Withdrawal</option>
+              </select>
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">From</label>
+              <input type="date" className={inputClass} value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">To</label>
+              <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-3">
+            {(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate) && (
+              <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+            )}
+            <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+          </div>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
