@@ -2096,13 +2096,16 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
-            {catFilter !== "All" && (
-              <div className="rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
-                <span className="text-xs text-slate-500">{catFilter} total ({filtered.length} transaction{filtered.length === 1 ? "" : "s"})</span>
-                <span className="font-bold text-indigo-700 ml-2">{fmtCurrency(filteredCategoryTotal)}</span>
+          {catFilter !== "All" && (
+            <div className="mt-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Selected category total</div>
+                <div className="text-sm font-medium text-indigo-800 mt-0.5">{catFilter} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</div>
               </div>
-            )}
+              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredCategoryTotal)}</div>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3 mt-3 flex-wrap">
             <div className="flex items-center gap-2 ml-auto">
               {(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate) && (
                 <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
@@ -2465,13 +2468,16 @@ function BankAccountRegister({ data, actions, account }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
-            {catFilter !== "All" && (
-              <div className="rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
-                <span className="text-xs text-slate-500">{catFilter} total ({filtered.length} transaction{filtered.length === 1 ? "" : "s"})</span>
-                <span className="font-bold text-indigo-700 ml-2">{fmtCurrency(filteredCategoryTotal)}</span>
+          {catFilter !== "All" && (
+            <div className="mt-3 rounded-xl border-2 border-indigo-300 bg-indigo-50 px-4 py-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Selected category total</div>
+                <div className="text-sm font-medium text-indigo-800 mt-0.5">{catFilter} · {filtered.length} transaction{filtered.length === 1 ? "" : "s"}</div>
               </div>
-            )}
+              <div className="text-xl md:text-2xl font-bold text-indigo-800 shrink-0">{fmtCurrency(filteredCategoryTotal)}</div>
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-3 mt-3 flex-wrap">
             <div className="flex items-center gap-2 ml-auto">
               {(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate) && (
                 <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
