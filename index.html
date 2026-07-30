@@ -2201,7 +2201,6 @@ function BankAccountRegister({ data, actions, account }) {
 
 function AccountsAndCards({ data, actions }) {
   const [activeTab, setActiveTab] = useState("cc");
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
 
   const ccAccount = data.accounts.find(a => a.id === CINDY_CC_ACCOUNT_ID || a.name === CINDY_CC_ACCOUNT_NAME);
   const chkAccount = data.accounts.find(a => a.id === CHK_ACCOUNT_ID);
@@ -2227,7 +2226,18 @@ function AccountsAndCards({ data, actions }) {
       account,
       kind: "bank",
     }));
-  const tabs = [...knownTabs, ...otherTabs].sort((a, b) => a.account.name.localeCompare(b.account.name));
+  const allowedIds = new Set([CINDY_CC_ACCOUNT_ID, CHK_ACCOUNT_ID, MIKE_ACCOUNT_ID, SAVINGS_ACCOUNT_ID, HYSA_ACCOUNT_ID]);
+  const requestedLabels = {
+    chk: "Cindy's Checking Account",
+    hysa: "HYSA",
+    cc: "ICCU Credit Card",
+    mike: "Mike's Checking Account",
+    savings: "Savings",
+  };
+  const tabs = [...knownTabs, ...otherTabs]
+    .filter(t => allowedIds.has(t.account.id))
+    .map(t => ({ ...t, label: requestedLabels[t.key] || t.label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   if (tabs.length === 0) return null;
   const active = tabs.find(t => t.key === activeTab) || tabs[0];
@@ -2240,7 +2250,6 @@ function AccountsAndCards({ data, actions }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <AddCategoryButton data={data} actions={actions} showLabel={true} />
-        <Button variant="secondary" onClick={() => setAccountModalOpen(true)}>+ Add Account/Card</Button>
       </div>
       <div className="flex flex-wrap gap-2">
         {tabs.map(t => (
@@ -2253,11 +2262,6 @@ function AccountsAndCards({ data, actions }) {
       {active.kind === "credit"
         ? <CindyCreditCardRegister data={data} actions={actions} cindyAccount={active.account} />
         : <BankAccountRegister data={data} actions={actions} account={active.account} />}
-      <AccountModal
-        open={accountModalOpen}
-        onClose={() => setAccountModalOpen(false)}
-        onSave={account => { actions.addAccount({ ...account, id: uid() }); setAccountModalOpen(false); }}
-      />
     </div>
   );
 }
