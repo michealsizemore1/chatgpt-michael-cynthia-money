@@ -689,7 +689,12 @@ function generateSeedData() {
 
 // A genuinely blank slate used only by the explicit "Clear All Data" action.
 function emptyData() {
-  return { accounts: [], transactions: [], budgets: {}, subscriptions: [], goals: [], netWorthHistory: [], recurringBills: [], rules: [], investments: [], paidBills: {}, customCategories: [] };
+  return {
+    accounts: [], transactions: [], budgets: {}, budgetPlans: {}, subscriptions: [],
+    goals: [], netWorthHistory: [], recurringBills: [], rules: [], investments: [],
+    investmentContributions: [], investmentStartingValue: 0, paycheckItems: [],
+    watchlists: [], paidBills: {}, customCategories: [],
+  };
 }
 
 /* Private embedded registers removed from this public build. */
@@ -717,12 +722,16 @@ function normalizeBudgetData(data) {
     accounts: data.accounts || [],
     transactions: data.transactions || [],
     budgets: data.budgets || {},
+    budgetPlans: data.budgetPlans || {},
     subscriptions: data.subscriptions || [],
     goals: data.goals || [],
     recurringBills: data.recurringBills || [],
     rules: data.rules || [],
     investments: data.investments || [],
     investmentContributions: data.investmentContributions || [],
+    investmentStartingValue: Number(data.investmentStartingValue) || 0,
+    paycheckItems: data.paycheckItems || [],
+    watchlists: data.watchlists || [],
     paidBills: data.paidBills || {},
     customCategories: data.customCategories || [],
     sinkingFunds: data.sinkingFunds || [],
@@ -974,7 +983,7 @@ function useDerived(data) {
     const now = new Date("2026-07-27T00:00:00");
     const curMonth = now.toISOString().slice(0, 7);
 
-    const monthTx = data.transactions.filter(t => monthKey(t.date) === curMonth);
+    const monthTx = data.transactions.filter(t => monthKey(t.date) === curMonth && !t.excludeFromBudget);
     const spendByCategory = {};
     const spendByPerson = { Joint: 0, Michael: 0, Cynthia: 0 };
     let monthIncome = 0, monthExpense = 0;
@@ -1360,23 +1369,32 @@ function Budgets({ data, actions, derived }) {
   const [editCat, setEditCat] = useState(null);
   const [editVal, setEditVal] = useState("");
   const [trendCat, setTrendCat] = useState("Groceries");
+  const [selectedMonth, setSelectedMonth] = useState(derived.curMonth);
   const budgetCategories = allExpenseCategories(data);
+  const monthBudget = (data.budgetPlans && data.budgetPlans[selectedMonth]) || data.budgets;
+  const monthSpend = {};
+  data.transactions.filter(t => monthKey(t.date) === selectedMonth && !t.excludeFromBudget && t.amount < 0 && t.category !== "Transfer").forEach(t => {
+    monthSpend[t.category] = (monthSpend[t.category] || 0) + Math.abs(t.amount);
+  });
 
-  const totalBudget = Object.values(data.budgets).reduce((s, v) => s + v, 0);
-  const totalSpent = Object.values(derived.spendByCategory).reduce((s, v) => s + v, 0);
+  const totalBudget = Object.values(monthBudget).reduce((s, v) => s + v, 0);
+  const totalSpent = Object.values(monthSpend).reduce((s, v) => s + v, 0);
+  const monthAlerts = budgetCategories.map(cat => ({ cat, budget: monthBudget[cat] || 0, spent: monthSpend[cat] || 0 }))
+    .filter(x => x.budget > 0 && x.spent / x.budget >= 0.85)
+    .map(x => ({ ...x, pct: (x.spent / x.budget) * 100, over: x.spent > x.budget }));
 
   const trendLabels = derived.trendMonths.map(m => new Date(m + "-01T00:00:00").toLocaleDateString("en-US", { month: "short" }));
   const trendValues = derived.trendMonths.map(m => (derived.monthlyCategoryTotals[m] && derived.monthlyCategoryTotals[m][trendCat]) || 0);
 
-  const openEdit = (cat) => { setEditCat(cat); setEditVal(String(data.budgets[cat] || 0)); };
+  const openEdit = (cat) => { setEditCat(cat); setEditVal(String(monthBudget[cat] || 0)); };
   const saveEdit = () => {
     const v = parseFloat(editVal);
-    if (!isNaN(v) && v >= 0) actions.setBudget(editCat, v);
+    if (!isNaN(v) && v >= 0) actions.setBudgetForMonth(selectedMonth, editCat, v);
     setEditCat(null);
   };
   const deleteBudget = (cat) => {
     if (!window.confirm(`Delete the ${cat} budget? Historical transactions will keep their category.`)) return;
-    actions.deleteBudget(cat);
+    actions.deleteBudgetForMonth(selectedMonth, cat);
     if (trendCat === cat) setTrendCat(budgetCategories.find(c => c !== cat) || "Groceries");
   };
 
@@ -1385,9 +1403,11 @@ function Budgets({ data, actions, derived }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-800">Budgets</h1>
-          <p className="text-slate-500 text-sm mt-1">Monthly spending plan by category — {new Date("2026-07-27").toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
+          <p className="text-slate-500 text-sm mt-1">Plan and review each month independently.</p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <input type="month" className={inputClass + " max-w-[180px]"} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
+          <Button variant="secondary" className="whitespace-nowrap" onClick={() => actions.copyBudgetToMonth(selectedMonth, monthBudget)}>Save Plan</Button>
           <Card className="px-5 py-3">
             <div className="text-xs text-slate-400">Total Budget Used</div>
             <div className="text-lg font-bold text-slate-800">{fmtCurrency(totalSpent, { decimals: false })} <span className="text-sm font-normal text-slate-400">/ {fmtCurrency(totalBudget, { decimals: false })}</span></div>
@@ -1398,11 +1418,11 @@ function Budgets({ data, actions, derived }) {
 
       <SectionNotes section="budgets" data={data} actions={actions} />
 
-      {derived.budgetAlerts.length > 0 && (
+      {monthAlerts.length > 0 && (
         <Card className="p-4 border-amber-200 bg-amber-50/60">
           <div className="text-sm text-amber-800">
             <span className="font-semibold">⚠️ Budget watch:</span>{" "}
-            {derived.budgetAlerts.map((a, i) => (
+            {monthAlerts.map((a, i) => (
               <span key={a.cat}>{i > 0 ? ", " : " "}{a.cat} {a.over ? "is over budget" : `is at ${a.pct.toFixed(0)}%`}</span>
             ))}.
           </div>
@@ -1411,8 +1431,8 @@ function Budgets({ data, actions, derived }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
         {budgetCategories.map(cat => {
-          const budget = data.budgets[cat] || 0;
-          const spent = derived.spendByCategory[cat] || 0;
+          const budget = monthBudget[cat] || 0;
+          const spent = monthSpend[cat] || 0;
           const pct = budget > 0 ? (spent / budget) * 100 : 0;
           const over = spent > budget && budget > 0;
           return (
@@ -1439,6 +1459,8 @@ function Budgets({ data, actions, derived }) {
       </div>
 
       <RolloverAndSinkingFunds data={data} actions={actions} />
+
+      <Watchlists data={data} actions={actions} selectedMonth={selectedMonth} />
 
       <Card className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -1467,10 +1489,64 @@ function Budgets({ data, actions, derived }) {
   );
 }
 
+function Watchlists({ data, actions, selectedMonth }) {
+  const [form, setForm] = useState({ type: "merchant", query: "", target: "" });
+  const add = () => {
+    const target = parseFloat(form.target);
+    if (!form.query.trim() || !Number.isFinite(target) || target <= 0) return;
+    actions.addWatchlist({ id: uid(), type: form.type, query: form.query.trim(), target });
+    setForm({ ...form, query: "", target: "" });
+  };
+  const spentFor = (w) => data.transactions.filter(t => {
+    if (monthKey(t.date) !== selectedMonth || t.amount >= 0 || t.excludeFromBudget) return false;
+    if (w.type === "category") return t.category.toLowerCase() === w.query.toLowerCase();
+    if (w.type === "tag") return (t.tags || []).some(tag => tag.toLowerCase() === w.query.toLowerCase());
+    return t.merchant.toLowerCase().includes(w.query.toLowerCase());
+  }).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+  return (
+    <Card className="p-5 md:p-6">
+      <h3 className="font-semibold text-slate-700">Spending Watchlists</h3>
+      <p className="text-sm text-slate-500 mt-1 mb-4">Watch a merchant, category, or tag without creating another formal budget.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_140px_auto] gap-2 items-end">
+        <Field label="Watch">
+          <select className={inputClass} value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
+            <option value="merchant">Merchant</option><option value="category">Category</option><option value="tag">Tag</option>
+          </select>
+        </Field>
+        <Field label="Name">
+          <input className={inputClass} placeholder="Amazon, Vacation, Dining…" value={form.query} onChange={e => setForm({ ...form, query: e.target.value })} />
+        </Field>
+        <Field label="Monthly target">
+          <input type="number" min="1" className={inputClass} placeholder="0.00" value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} />
+        </Field>
+        <div className="mb-3"><Button className="w-full whitespace-nowrap" onClick={add}>Add Watchlist</Button></div>
+      </div>
+      {(data.watchlists || []).length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          {data.watchlists.map(w => {
+            const spent = spentFor(w);
+            return (
+              <div key={w.id} className="rounded-xl border border-slate-100 p-3">
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="font-medium text-slate-700">{w.query} <span className="text-xs font-normal text-slate-400">({w.type})</span></span>
+                  <button className="text-xs text-rose-500" onClick={() => actions.deleteWatchlist(w.id)}>Delete</button>
+                </div>
+                <ProgressBar pct={(spent / w.target) * 100} color={spent > w.target ? "#e11d48" : "#4f46e5"} />
+                <div className="text-xs text-slate-500 mt-1">{fmtCurrency(spent)} of {fmtCurrency(w.target)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 /* ============================== TRANSACTIONS ============================== */
 
 function TransactionModal({ open, onClose, onSave, initial, accounts, rules, defaultAccountId }) {
-  const blank = { date: "2026-07-27", accountId: defaultAccountId || accounts[0]?.id || "", merchant: "", category: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Personal Support" : "Other", amount: "", notes: "", person: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Cynthia" : "Joint", receipt: null };
+  const blank = { date: new Date().toISOString().slice(0, 10), accountId: defaultAccountId || accounts[0]?.id || "", merchant: "", category: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Personal Support" : "Other", amount: "", notes: "", tags: [], excludeFromBudget: false, needsReview: false, person: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Cynthia" : "Joint", receipt: null };
   const [form, setForm] = useState(initial || blank);
   const [receiptBusy, setReceiptBusy] = useState(false);
   useEffect(() => { setForm(initial || blank); }, [initial, open, defaultAccountId]);
@@ -1534,6 +1610,16 @@ function TransactionModal({ open, onClose, onSave, initial, accounts, rules, def
         <Field label="Notes (optional)">
           <input className={inputClass} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
         </Field>
+        <Field label="Tags (optional, separated by commas)">
+          <input className={inputClass} placeholder="Tax, Vacation, Reimbursable…" value={(form.tags || []).join(", ")} onChange={e => setForm({ ...form, tags: e.target.value.split(",").map(v => v.trim()).filter(Boolean) })} />
+        </Field>
+        <label className="flex items-start gap-2 rounded-lg bg-slate-50 p-3 mb-3 cursor-pointer">
+          <input type="checkbox" className="mt-0.5" checked={!!form.excludeFromBudget} onChange={e => setForm({ ...form, excludeFromBudget: e.target.checked })} />
+          <span>
+            <span className="block text-sm font-medium text-slate-700">Exclude from budget and cash-flow reports</span>
+            <span className="block text-xs text-slate-400">Useful for reimbursements, business purchases, and other non-budget activity.</span>
+          </span>
+        </label>
         <Field label="Receipt (optional)">
           {form.receipt ? (
             <div className="flex items-center gap-3">
@@ -1636,6 +1722,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [unclearedFirst, setUnclearedFirst] = useState(false);
+  const [descriptionSort, setDescriptionSort] = useState(null);
   const [notes, setNotes] = useState(data.cindyRegisterNotes || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const editFormRef = useRef(null);
@@ -1674,10 +1761,16 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
   }, [allTx, search, catFilter, typeFilter, fromDate, toDate]);
 
   const sorted = useMemo(() => {
-    const byDateDesc = [...filtered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const byDateDesc = [...filtered].sort((a, b) => {
+      if (descriptionSort) {
+        const comparison = String(a.merchant || "").localeCompare(String(b.merchant || ""), undefined, { sensitivity: "base" });
+        return descriptionSort === "asc" ? comparison : -comparison;
+      }
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    });
     if (!unclearedFirst) return byDateDesc;
     return [...byDateDesc.filter(t => t.cleared === false), ...byDateDesc.filter(t => t.cleared !== false)];
-  }, [filtered, unclearedFirst]);
+  }, [filtered, unclearedFirst, descriptionSort]);
 
   const resetForm = () => setForm(blankForm);
 
@@ -1771,7 +1864,7 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
               <select className={inputClass} disabled={form.regType === "payment"} value={form.regType === "payment" ? "Transfer" : form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {(form.regType === "payment" ? ["Transfer"] : allExpenseCategories(data)).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="hidden sm:flex items-center gap-2 mt-2">
                 <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
                 <button type="button" title="Attach receipt" className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 shrink-0" onClick={() => document.getElementById("cindy-receipt-input").click()}>📎</button>
                 <input id="cindy-receipt-input" type="file" accept="image/*" className="hidden" onChange={e => attachReceipt(e.target.files[0])} />
@@ -1803,6 +1896,9 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
             </div>
             <div className="flex items-center gap-2 ml-auto">
               {form.id && <button type="button" className="text-xs text-slate-500 font-medium" onClick={resetForm}>Cancel</button>}
+              <div className="sm:hidden">
+                <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
+              </div>
               <Button className="text-xs px-4 py-2" onClick={submit}>{form.id ? "Update" : "+ Add"}</Button>
             </div>
           </div>
@@ -1858,7 +1954,11 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
               <tr>
                 <th className="text-left px-3 py-3 font-medium w-8"></th>
                 <th className="text-left px-3 py-3 font-medium">Date</th>
-                <th className="text-left px-3 py-3 font-medium">Description</th>
+                <th className="text-left px-3 py-3 font-medium">
+                  <button type="button" className="hover:text-indigo-600" onClick={() => setDescriptionSort(current => current === "asc" ? "desc" : "asc")}>
+                    Description {descriptionSort === "asc" ? "↑" : descriptionSort === "desc" ? "↓" : "↕"}
+                  </button>
+                </th>
                 <th className="text-left px-3 py-3 font-medium">Category</th>
                 <th className="text-left px-3 py-3 font-medium">Type</th>
                 <th className="text-right px-3 py-3 font-medium">Balance</th>
@@ -1932,6 +2032,7 @@ function BankAccountRegister({ data, actions, account }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [unclearedFirst, setUnclearedFirst] = useState(false);
+  const [descriptionSort, setDescriptionSort] = useState(null);
   const [notes, setNotes] = useState((data.registerNotes && data.registerNotes[account.id]) || "");
   const [viewingReceipt, setViewingReceipt] = useState(null);
   const editFormRef = useRef(null);
@@ -1971,10 +2072,16 @@ function BankAccountRegister({ data, actions, account }) {
   }, [allTx, search, catFilter, dirFilter, fromDate, toDate]);
 
   const sorted = useMemo(() => {
-    const byDateDesc = [...filtered].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const byDateDesc = [...filtered].sort((a, b) => {
+      if (descriptionSort) {
+        const comparison = String(a.merchant || "").localeCompare(String(b.merchant || ""), undefined, { sensitivity: "base" });
+        return descriptionSort === "asc" ? comparison : -comparison;
+      }
+      return a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+    });
     if (!unclearedFirst) return byDateDesc;
     return [...byDateDesc.filter(t => t.cleared === false), ...byDateDesc.filter(t => t.cleared !== false)];
-  }, [filtered, unclearedFirst]);
+  }, [filtered, unclearedFirst, descriptionSort]);
 
   const resetForm = () => setForm(blankForm);
 
@@ -2066,7 +2173,7 @@ function BankAccountRegister({ data, actions, account }) {
               <select className={inputClass} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {allCategoriesFull(data).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="hidden sm:flex items-center gap-2 mt-2">
                 <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
                 <button type="button" title="Attach receipt" className="w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 shrink-0" onClick={() => document.getElementById("bank-receipt-input-" + account.id).click()}>📎</button>
                 <input id={"bank-receipt-input-" + account.id} type="file" accept="image/*" className="hidden" onChange={e => attachReceipt(e.target.files[0])} />
@@ -2089,6 +2196,9 @@ function BankAccountRegister({ data, actions, account }) {
             </div>
             <div className="flex items-center gap-2 ml-auto">
               {form.id && <button type="button" className="text-xs text-slate-500 font-medium" onClick={resetForm}>Cancel</button>}
+              <div className="sm:hidden">
+                <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
+              </div>
               <Button className="text-xs px-4 py-2" onClick={submit}>{form.id ? "Update" : "+ Add"}</Button>
             </div>
           </div>
@@ -2143,7 +2253,11 @@ function BankAccountRegister({ data, actions, account }) {
               <tr>
                 <th className="text-left px-3 py-3 font-medium w-8"></th>
                 <th className="text-left px-3 py-3 font-medium">Date</th>
-                <th className="text-left px-3 py-3 font-medium">Description</th>
+                <th className="text-left px-3 py-3 font-medium">
+                  <button type="button" className="hover:text-indigo-600" onClick={() => setDescriptionSort(current => current === "asc" ? "desc" : "asc")}>
+                    Description {descriptionSort === "asc" ? "↑" : descriptionSort === "desc" ? "↓" : "↕"}
+                  </button>
+                </th>
                 <th className="text-left px-3 py-3 font-medium">Category</th>
                 <th className="text-left px-3 py-3 font-medium">Type</th>
                 <th className="text-right px-3 py-3 font-medium">Balance</th>
@@ -2509,6 +2623,59 @@ function ImportStatementModal({ open, onClose, data, actions }) {
   );
 }
 
+function SplitTransactionModal({ transaction, data, onClose, onSplit }) {
+  const total = Math.abs(transaction?.amount || 0);
+  const [parts, setParts] = useState([]);
+  useEffect(() => {
+    const nextTotal = Math.abs(transaction?.amount || 0);
+    const firstHalf = nextTotal ? Math.floor(nextTotal * 100 / 2) / 100 : 0;
+    setParts([
+      { category: transaction?.category || "Other", amount: firstHalf ? firstHalf.toFixed(2) : "" },
+      { category: "Other", amount: nextTotal ? (nextTotal - firstHalf).toFixed(2) : "" },
+    ]);
+  }, [transaction]);
+  const enteredTotal = parts.reduce((sum, part) => sum + (parseFloat(part.amount) || 0), 0);
+  const remaining = Math.round((total - enteredTotal) * 100) / 100;
+  const valid = parts.length >= 2
+    && parts.every(part => part.category && (parseFloat(part.amount) || 0) > 0)
+    && Math.abs(remaining) < 0.005;
+  const updatePart = (index, changes) => setParts(current => current.map((part, i) => i === index ? { ...part, ...changes } : part));
+  const addPart = () => setParts(current => [...current, { category: "Other", amount: remaining > 0 ? remaining.toFixed(2) : "" }]);
+  const removePart = (index) => setParts(current => current.filter((_, i) => i !== index));
+
+  return (
+    <Modal open={!!transaction} onClose={onClose} title={"Split Transaction — " + (transaction?.merchant || "")}>
+      <p className="text-sm text-slate-500 mb-4">Divide {fmtCurrency(total)} among two or more budget categories.</p>
+      <div className="space-y-3">
+        {parts.map((part, index) => (
+          <div key={index} className="grid grid-cols-[minmax(0,1fr)_110px_32px] gap-2 items-end">
+            <Field label={`Category ${index + 1}`}>
+              <select className={inputClass} value={part.category} onChange={e => updatePart(index, { category: e.target.value })}>
+                {allCategoriesFull(data).map(c => <option key={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Amount">
+              <input type="number" min="0.01" step="0.01" className={inputClass} value={part.amount} onChange={e => updatePart(index, { amount: e.target.value })} />
+            </Field>
+            <button type="button" title="Remove category" disabled={parts.length <= 2} className="h-[42px] text-rose-500 disabled:text-slate-300" onClick={() => removePart(index)}>×</button>
+          </div>
+        ))}
+        <button type="button" className="text-sm text-indigo-600 font-medium" onClick={addPart}>+ Add another category</button>
+      </div>
+      <div className={"text-sm rounded-lg px-3 py-2 my-3 " + (Math.abs(remaining) < 0.005 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>
+        {Math.abs(remaining) < 0.005 ? "Split total matches the transaction." : `${remaining > 0 ? "Remaining" : "Over by"}: ${fmtCurrency(Math.abs(remaining))}`}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+        <Button disabled={!valid} onClick={() => onSplit(parts.map(part => ({
+          category: part.category,
+          amount: parseFloat(part.amount),
+        })))}>Save Split</Button>
+      </div>
+    </Modal>
+  );
+}
+
 function Transactions({ data, actions }) {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
@@ -2528,6 +2695,8 @@ function Transactions({ data, actions }) {
   const [markingSub, setMarkingSub] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkMoveAccountId, setBulkMoveAccountId] = useState("");
+  const [splitting, setSplitting] = useState(null);
+  const reviewCount = data.transactions.filter(t => t.needsReview).length;
 
   useEffect(() => {
     try { sessionStorage.setItem("meridian_transactions_section_open", String(sectionOpen)); }
@@ -2618,6 +2787,16 @@ function Transactions({ data, actions }) {
 
       <SectionNotes section="transactions" data={data} actions={actions} />
 
+      {reviewCount > 0 && (
+        <Card className="p-4 border-amber-200 bg-amber-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold text-amber-800">{reviewCount} imported transaction{reviewCount === 1 ? "" : "s"} need review</div>
+            <div className="text-xs text-amber-600 mt-0.5">Confirm categories before relying on monthly reports.</div>
+          </div>
+          <Button variant="secondary" onClick={() => actions.markAllTransactionsReviewed()}>Mark All Reviewed</Button>
+        </Card>
+      )}
+
       <ImportStatementModal open={importOpen} onClose={() => setImportOpen(false)} data={data} actions={actions} />
 
       {sectionOpen && (
@@ -2707,6 +2886,13 @@ function Transactions({ data, actions }) {
                         <span className="text-xs uppercase tracking-wide text-slate-400">Category</span>
                         <Pill tone="slate">{t.category}</Pill>
                       </div>
+                      {(t.tags || []).length > 0 && (
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="text-xs uppercase tracking-wide text-slate-400">Tags</span>
+                          <span className="text-xs text-slate-600 text-right">{t.tags.join(", ")}</span>
+                        </div>
+                      )}
+                      {t.excludeFromBudget && <div className="text-xs text-amber-600 font-medium text-right">Excluded from budget</div>}
                       <div className="flex items-center justify-between">
                         <span className="text-xs uppercase tracking-wide text-slate-400">Person</span>
                         <span className="text-slate-600">{PEOPLE_META[t.person || "Joint"].icon} {t.person || "Joint"}</span>
@@ -2734,6 +2920,8 @@ function Transactions({ data, actions }) {
                     </div>
                     <div className="flex gap-4 mt-3 pt-3 border-t border-slate-50">
                       <button className="text-xs text-indigo-600 font-medium" onClick={() => openEdit(t)}>Edit</button>
+                      <button className="text-xs text-indigo-600 font-medium" onClick={() => setSplitting(t)}>Split</button>
+                      {t.needsReview && <button className="text-xs text-emerald-600 font-medium" onClick={() => actions.markTransactionReviewed(t.id)}>Reviewed</button>}
                       {t.amount < 0 && <button className="text-xs text-indigo-600 font-medium" onClick={() => openMarkSubscription(t)}>Mark as Subscription</button>}
                       <button className="text-xs text-rose-500 font-medium" onClick={() => actions.deleteTransaction(t.id)}>Delete</button>
                     </div>
@@ -2784,6 +2972,8 @@ function Transactions({ data, actions }) {
                   </td>
                   <td className="px-5 py-3 text-right opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity whitespace-nowrap">
                     <button className="text-xs text-indigo-600 font-medium mr-3" onClick={() => openEdit(t)}>Edit</button>
+                    <button className="text-xs text-indigo-600 font-medium mr-3" onClick={() => setSplitting(t)}>Split</button>
+                    {t.needsReview && <button className="text-xs text-emerald-600 font-medium mr-3" onClick={() => actions.markTransactionReviewed(t.id)}>Reviewed</button>}
                     {t.amount < 0 && <button className="text-xs text-indigo-600 font-medium mr-3" onClick={() => openMarkSubscription(t)}>Mark as Subscription</button>}
                     <button className="text-xs text-rose-500 font-medium" onClick={() => actions.deleteTransaction(t.id)}>Delete</button>
                   </td>
@@ -2810,6 +3000,13 @@ function Transactions({ data, actions }) {
       <TransactionModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={save} initial={editing} accounts={data.accounts} rules={data.rules} defaultAccountId={presetAccountId} />
 
       <SubscriptionModal open={!!markingSub} onClose={closeMarkSubscription} onSave={saveMarkedSubscription} prefill={markSubPrefill} />
+
+      <SplitTransactionModal
+        transaction={splitting}
+        data={data}
+        onClose={() => setSplitting(null)}
+        onSplit={(parts) => { actions.splitTransaction(splitting, parts); setSplitting(null); }}
+      />
 
       <Modal open={!!viewingReceipt} onClose={() => setViewingReceipt(null)} title="Receipt">
         {viewingReceipt && <img src={viewingReceipt} className="w-full rounded-lg" alt="Receipt" />}
@@ -3173,6 +3370,98 @@ function DayDetailModal({ open, onClose, day, items, monthKey, actions }) {
 
 const CASHFLOW_REAL_TODAY = { year: 2026, month: 7, day: 27 };
 
+function PaycheckPlanner({ data, actions }) {
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), label: "", amount: "", type: "expense" });
+  const checking = data.accounts.find(a => a.type === "checking");
+  const items = [...(data.paycheckItems || [])].sort((a, b) => a.date.localeCompare(b.date));
+  let running = checking?.balance || 0;
+  const projected = items.map(item => {
+    running += item.type === "income" ? item.amount : -item.amount;
+    return { ...item, running };
+  });
+  const lowest = projected.length ? Math.min(checking?.balance || 0, ...projected.map(i => i.running)) : checking?.balance || 0;
+  const add = () => {
+    const amount = parseFloat(form.amount);
+    if (!form.label.trim() || !Number.isFinite(amount) || amount <= 0) return;
+    actions.addPaycheckItem({ id: uid(), ...form, label: form.label.trim(), amount });
+    setForm(f => ({ ...f, label: "", amount: "" }));
+  };
+
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-slate-700">Paycheck Planner</h3>
+          <p className="text-sm text-slate-500 mt-1">Schedule paychecks and major expenses to spot a cash shortage before it happens.</p>
+        </div>
+        <div className={"rounded-xl px-4 py-2 text-center " + (lowest < 0 ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700")}>
+          <div className="text-[10px] uppercase tracking-wide">Lowest projected balance</div>
+          <div className="font-bold">{fmtCurrency(lowest)}</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[150px_130px_1fr_140px_auto] gap-2 items-end mt-4">
+        <Field label="Date"><input type="date" className={inputClass} value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} /></Field>
+        <Field label="Type"><select className={inputClass} value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}><option value="income">Paycheck</option><option value="expense">Expense</option></select></Field>
+        <Field label="Description"><input className={inputClass} placeholder="Payday, mortgage…" value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} /></Field>
+        <Field label="Amount"><input type="number" min="0.01" step="0.01" className={inputClass} value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></Field>
+        <div className="mb-3"><Button className="w-full whitespace-nowrap" onClick={add}>Add</Button></div>
+      </div>
+      {projected.length > 0 && (
+        <div className="mt-3 divide-y divide-slate-100">
+          {projected.map(item => (
+            <div key={item.id} className="grid grid-cols-[85px_1fr_auto] sm:grid-cols-[100px_1fr_120px_120px_auto] gap-2 items-center py-2 text-sm">
+              <span className="text-slate-400">{fmtDateShort(item.date)}</span>
+              <span className="text-slate-700 truncate">{item.label}</span>
+              <span className={"hidden sm:block text-right font-medium " + (item.type === "income" ? "text-emerald-600" : "text-rose-600")}>{item.type === "income" ? "+" : "-"}{fmtCurrency(item.amount)}</span>
+              <span className={"text-right font-semibold " + (item.running < 0 ? "text-rose-600" : "text-slate-700")}>{fmtCurrency(item.running)}</span>
+              <button className="text-xs text-rose-500" onClick={() => actions.deletePaycheckItem(item.id)}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function MonthlyClosingReport({ data }) {
+  const months = [...new Set(data.transactions.map(t => monthKey(t.date)))].sort().reverse();
+  const [selected, setSelected] = useState(months[0] || new Date().toISOString().slice(0, 7));
+  const tx = data.transactions.filter(t => monthKey(t.date) === selected && !t.excludeFromBudget && t.category !== "Transfer");
+  const income = tx.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const spending = tx.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const byCategory = {};
+  const byMerchant = {};
+  tx.filter(t => t.amount < 0).forEach(t => {
+    byCategory[t.category] = (byCategory[t.category] || 0) + Math.abs(t.amount);
+    byMerchant[t.merchant] = (byMerchant[t.merchant] || 0) + Math.abs(t.amount);
+  });
+  const topCategory = Object.entries(byCategory).sort((a, b) => b[1] - a[1])[0];
+  const topMerchant = Object.entries(byMerchant).sort((a, b) => b[1] - a[1])[0];
+  const contributions = (data.investmentContributions || []).filter(c => monthKey(c.date) === selected).reduce((s, c) => s + c.amount, 0);
+  const plan = (data.budgetPlans && data.budgetPlans[selected]) || data.budgets;
+  const planned = Object.values(plan || {}).reduce((s, v) => s + v, 0);
+
+  return (
+    <Card className="p-5 md:p-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
+        <div><h3 className="font-semibold text-slate-700">Monthly Closing Report</h3><p className="text-sm text-slate-500 mt-1">A quick month-end review of the plan and actual results.</p></div>
+        <input type="month" className={inputClass + " max-w-[180px]"} value={selected} onChange={e => setSelected(e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <RegStat label="Income" value={fmtCurrency(income)} tone="emerald" />
+        <RegStat label="Spending" value={fmtCurrency(spending)} tone="rose" />
+        <RegStat label="Net Cash Flow" value={fmtCurrency(income - spending)} tone={income - spending >= 0 ? "emerald" : "rose"} />
+        <RegStat label="Investment Contributions" value={fmtCurrency(contributions)} tone="indigo" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 text-sm">
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs text-slate-400">Plan vs actual</div><div className="font-semibold text-slate-700 mt-1">{fmtCurrency(spending)} / {fmtCurrency(planned)}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs text-slate-400">Top category</div><div className="font-semibold text-slate-700 mt-1">{topCategory ? `${topCategory[0]} · ${fmtCurrency(topCategory[1])}` : "—"}</div></div>
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-xs text-slate-400">Top merchant</div><div className="font-semibold text-slate-700 mt-1">{topMerchant ? `${topMerchant[0]} · ${fmtCurrency(topMerchant[1])}` : "—"}</div></div>
+      </div>
+    </Card>
+  );
+}
+
 function CashFlow({ data, derived, actions }) {
   const [viewYear, setViewYear] = useState(CASHFLOW_REAL_TODAY.year);
   const [viewMonth, setViewMonth] = useState(CASHFLOW_REAL_TODAY.month);
@@ -3275,6 +3564,10 @@ function CashFlow({ data, derived, actions }) {
         monthKey={viewMonthKey}
         actions={actions}
       />
+
+      <PaycheckPlanner data={data} actions={actions} />
+
+      <MonthlyClosingReport data={data} />
     </div>
   );
 }
@@ -3453,6 +3746,10 @@ function InvestmentContributions({ data, actions }) {
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthTotal = contributions.filter(c => c.date.slice(0, 7) === currentMonth).reduce((sum, c) => sum + c.amount, 0);
   const yearTotal = contributions.filter(c => c.date.slice(0, 4) === currentMonth.slice(0, 4)).reduce((sum, c) => sum + c.amount, 0);
+  const lifetimeContributions = contributions.reduce((sum, c) => sum + c.amount, 0);
+  const currentValue = (data.investments || []).reduce((sum, i) => sum + i.value, 0);
+  const startingValue = Number(data.investmentStartingValue) || 0;
+  const marketChange = startingValue > 0 ? currentValue - startingValue - lifetimeContributions : null;
 
   const save = (e) => {
     e.preventDefault();
@@ -3486,6 +3783,18 @@ function InvestmentContributions({ data, actions }) {
             <div className="text-[10px] uppercase tracking-wide text-emerald-500">This year</div>
             <div className="text-sm font-bold text-emerald-700">{fmtCurrency(yearTotal)}</div>
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <label className="rounded-xl bg-slate-50 p-3">
+          <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Starting portfolio value</span>
+          <input type="number" step="0.01" className={inputClass} placeholder="Enter baseline" value={startingValue || ""} onChange={e => actions.setInvestmentStartingValue(parseFloat(e.target.value) || 0)} />
+        </label>
+        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Current holdings value</div><div className="text-lg font-bold text-slate-700 mt-1">{fmtCurrency(currentValue)}</div></div>
+        <div className={"rounded-xl p-3 " + (marketChange == null ? "bg-slate-50" : marketChange >= 0 ? "bg-emerald-50" : "bg-rose-50")}>
+          <div className="text-[10px] uppercase tracking-wide text-slate-400">Estimated market gain/loss</div>
+          <div className={"text-lg font-bold mt-1 " + (marketChange == null ? "text-slate-400" : marketChange >= 0 ? "text-emerald-700" : "text-rose-700")}>{marketChange == null ? "Add baseline" : fmtCurrency(marketChange)}</div>
         </div>
       </div>
 
@@ -3643,6 +3952,7 @@ function AccountModal({ open, onClose, onSave, initial }) {
 function Accounts({ data, actions, derived }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [assetDescriptionSort, setAssetDescriptionSort] = useState("asc");
 
   const openAdd = () => { setEditing(null); setModalOpen(true); };
   const openEdit = (a) => { setEditing(a); setModalOpen(true); };
@@ -3655,6 +3965,10 @@ function Accounts({ data, actions, derived }) {
   const debtAccounts = data.accounts.filter(a => a.type === "credit" || a.type === "loan" || a.balance < 0);
   const debtIds = new Set(debtAccounts.map(a => a.id));
   const assetAccounts = data.accounts.filter(a => !debtIds.has(a.id));
+  const sortedAssetAccounts = [...assetAccounts].sort((a, b) => {
+    const comparison = String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" });
+    return assetDescriptionSort === "asc" ? comparison : -comparison;
+  });
 
   return (
     <div className="p-4 md:p-8 space-y-5 md:space-y-6">
@@ -3686,9 +4000,17 @@ function Accounts({ data, actions, derived }) {
       </div>
 
       <Card className="p-6">
-        <h3 className="font-semibold text-slate-700 mb-4">Assets</h3>
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="font-semibold text-slate-700">Assets</h3>
+          <button
+            type="button"
+            className="text-xs font-medium text-indigo-600 border border-indigo-100 rounded-lg px-3 py-2 hover:bg-indigo-50"
+            onClick={() => setAssetDescriptionSort(current => current === "asc" ? "desc" : "asc")}
+            title="Sort assets by description"
+          >Description {assetDescriptionSort === "asc" ? "A–Z ↑" : "Z–A ↓"}</button>
+        </div>
         <div className="space-y-3">
-          {assetAccounts.map(a => (
+          {sortedAssetAccounts.map(a => (
             <div key={a.id} className="flex items-center flex-wrap gap-y-2 justify-between border-b border-slate-50 pb-3 last:border-0 last:pb-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-lg shrink-0">{ACCOUNT_TYPE_META[a.type].icon}</div>
@@ -4239,10 +4561,12 @@ function Settings({ data, actions }) {
         <h3 className="font-semibold text-slate-700">🔔 Budget Reminders</h3>
         <p className="text-sm text-slate-500 mt-1">Show browser reminders for overspending and upcoming bills while the app is open.</p>
         <div className="mt-3 flex items-center gap-3 flex-wrap">
-          <Button variant="secondary" onClick={actions.enableNotifications}>
-            {(data.notificationPrefs || {}).enabled ? "Notifications enabled" : "Enable notifications"}
+          <Button variant="secondary" onClick={(data.notificationPrefs || {}).enabled ? actions.disableNotifications : actions.enableNotifications}>
+            {(data.notificationPrefs || {}).enabled ? "Disable notifications" : "Enable notifications"}
           </Button>
-          <span className="text-xs text-slate-400">Your browser may ask for permission.</span>
+          <span className="text-xs text-slate-400">
+            {(data.notificationPrefs || {}).message || "Your browser may ask for permission. The budget will continue working if notifications are unavailable."}
+          </span>
         </div>
       </Card>
 
@@ -4524,7 +4848,9 @@ function App({ session, onSignOut }) {
     if (!(data.notificationPrefs || {}).enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
     const today = new Date().toISOString().slice(0, 10);
     const key = "meridian_money_alerted_" + today;
-    if (localStorage.getItem(key)) return;
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch (e) {}
     const messages = [];
     if (derived.budgetAlerts.length) {
       const worst = [...derived.budgetAlerts].sort((a, b) => b.pct - a.pct)[0];
@@ -4533,20 +4859,75 @@ function App({ session, onSignOut }) {
     const nextBill = derived.recurringItems.filter(b => !b.paid && b.dayOfMonth >= 27).sort((a, b) => a.dayOfMonth - b.dayOfMonth)[0];
     if (nextBill) messages.push(`${nextBill.merchant} is due soon for ${fmtCurrency(nextBill.amount)}.`);
     if (messages.length) {
-      new Notification("Michael & Cynthia's Money", { body: messages.join(" ") });
-      localStorage.setItem(key, "1");
+      const showReminder = async () => {
+        try {
+          const options = { body: messages.join(" "), tag: "mc-money-daily-reminder" };
+          let shown = false;
+          if ("serviceWorker" in navigator) {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration && typeof registration.showNotification === "function") {
+              await registration.showNotification("Michael & Cynthia's Money", options);
+              shown = true;
+            }
+          }
+          if (!shown) {
+            try {
+              new Notification("Michael & Cynthia's Money", options);
+              shown = true;
+            } catch (e) {
+              // Some mobile browsers grant permission but do not allow the page
+              // Notification constructor. Keep the app running in that case.
+            }
+          }
+          if (shown) {
+            try { localStorage.setItem(key, "1"); } catch (e) {}
+          }
+        } catch (e) {
+          // Notification failures must never interrupt access to the budget.
+        }
+      };
+      showReminder();
     }
   }, [data.notificationPrefs && data.notificationPrefs.enabled, JSON.stringify(derived.budgetAlerts), JSON.stringify(derived.recurringItems)]);
 
   const actions = {
-    addTransaction: (t) => setData(d => ({ ...d, transactions: [t, ...d.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)) })),
+    addTransaction: (t) => setData(d => ({ ...d, transactions: [{ ...t, needsReview: false }, ...d.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)) })),
     updateTransaction: (t) => setData(d => ({ ...d, transactions: d.transactions.map(x => x.id === t.id ? t : x) })),
     deleteTransaction: (id) => setData(d => ({ ...d, transactions: d.transactions.filter(x => x.id !== id) })),
+    splitTransaction: (original, parts) => setData(d => {
+      const sign = original.amount < 0 ? -1 : 1;
+      const children = parts.map((part, index) => ({
+        ...original,
+        id: uid(),
+        amount: sign * Number(part.amount),
+        category: part.category,
+        notes: `${original.notes || ""}${original.notes ? " · " : ""}Split ${index + 1} of ${parts.length}`,
+        needsReview: false,
+        splitFromId: original.id,
+      }));
+      return {
+        ...d,
+        transactions: [...children, ...d.transactions.filter(t => t.id !== original.id)]
+          .sort((a, b) => (a.date < b.date ? 1 : -1)),
+      };
+    }, "Transaction split"),
+    markTransactionReviewed: (id) => setData(d => ({
+      ...d,
+      transactions: d.transactions.map(t => t.id === id ? { ...t, needsReview: false } : t),
+    }), "Transaction reviewed"),
+    markAllTransactionsReviewed: () => setData(d => ({
+      ...d,
+      transactions: d.transactions.map(t => ({ ...t, needsReview: false })),
+    }), "Transactions reviewed"),
     reassignTransactionsAccount: (ids, accountId) => setData(d => {
       const idSet = new Set(ids);
       return { ...d, transactions: d.transactions.map(t => idSet.has(t.id) ? { ...t, accountId } : t) };
     }),
-    importTransactions: (arr) => setData(d => ({ ...d, transactions: [...arr, ...d.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)) })),
+    importTransactions: (arr) => setData(d => ({
+      ...d,
+      transactions: [...arr.map(t => ({ ...t, needsReview: true })), ...d.transactions]
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    })),
 
     toggleBillPaid: (monthKey, id) => setData(d => {
       const paidBills = { ...(d.paidBills || {}) };
@@ -4557,6 +4938,29 @@ function App({ session, onSignOut }) {
     }),
 
     setBudget: (cat, val) => setData(d => ({ ...d, budgets: { ...d.budgets, [cat]: val } })),
+    setBudgetForMonth: (month, cat, val) => setData(d => {
+      const plan = { ...((d.budgetPlans || {})[month] || d.budgets), [cat]: val };
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      return {
+        ...d,
+        budgets: month === currentMonth ? plan : d.budgets,
+        budgetPlans: { ...(d.budgetPlans || {}), [month]: plan },
+      };
+    }, "Monthly budget updated"),
+    deleteBudgetForMonth: (month, cat) => setData(d => {
+      const plan = { ...((d.budgetPlans || {})[month] || d.budgets) };
+      delete plan[cat];
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      return {
+        ...d,
+        budgets: month === currentMonth ? plan : d.budgets,
+        budgetPlans: { ...(d.budgetPlans || {}), [month]: plan },
+      };
+    }, "Monthly budget category deleted"),
+    copyBudgetToMonth: (month, plan) => setData(d => ({
+      ...d,
+      budgetPlans: { ...(d.budgetPlans || {}), [month]: { ...plan } },
+    }), "Budget plan saved"),
     deleteBudget: (cat) => setData(d => {
       const budgets = { ...d.budgets };
       delete budgets[cat];
@@ -4598,6 +5002,26 @@ function App({ session, onSignOut }) {
       ...d,
       investmentContributions: (d.investmentContributions || []).filter(c => c.id !== id),
     }), "Investment contribution deleted"),
+    setInvestmentStartingValue: (value) => setData(d => ({
+      ...d,
+      investmentStartingValue: Number(value) || 0,
+    }), "Investment baseline updated"),
+    addPaycheckItem: (item) => setData(d => ({
+      ...d,
+      paycheckItems: [...(d.paycheckItems || []), item],
+    }), "Paycheck item added"),
+    deletePaycheckItem: (id) => setData(d => ({
+      ...d,
+      paycheckItems: (d.paycheckItems || []).filter(item => item.id !== id),
+    }), "Paycheck item deleted"),
+    addWatchlist: (watchlist) => setData(d => ({
+      ...d,
+      watchlists: [...(d.watchlists || []), watchlist],
+    }), "Watchlist added"),
+    deleteWatchlist: (id) => setData(d => ({
+      ...d,
+      watchlists: (d.watchlists || []).filter(item => item.id !== id),
+    }), "Watchlist deleted"),
 
     addRule: (r) => setData(d => ({ ...d, rules: [...(d.rules || []), r] })),
     deleteRule: (id) => setData(d => ({ ...d, rules: (d.rules || []).filter(r => r.id !== id) })),
@@ -4637,10 +5061,33 @@ function App({ session, onSignOut }) {
     setSectionNotes: (section, text) => setData(d => ({ ...d, sectionNotes: { ...(d.sectionNotes || {}), [section]: text } })),
     setPrivacyPrefs: (prefs) => setData(d => ({ ...d, privacyPrefs: { ...(d.privacyPrefs || {}), ...prefs } }), "Privacy preference changed"),
     enableNotifications: async () => {
-      if (typeof Notification === "undefined") return;
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") setData(d => ({ ...d, notificationPrefs: { enabled: true } }), "Budget reminders enabled");
+      try {
+        if (typeof Notification === "undefined" || typeof Notification.requestPermission !== "function") {
+          setData(d => ({ ...d, notificationPrefs: { enabled: false, message: "Notifications are not supported by this browser." } }));
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          setData(d => ({ ...d, notificationPrefs: { enabled: true, message: "Notifications are enabled." } }), "Budget reminders enabled");
+        } else {
+          setData(d => ({
+            ...d,
+            notificationPrefs: {
+              enabled: false,
+              message: permission === "denied"
+                ? "Notifications are blocked in this browser's site settings."
+                : "Notification permission was not enabled.",
+            },
+          }));
+        }
+      } catch (e) {
+        setData(d => ({ ...d, notificationPrefs: { enabled: false, message: "Notifications could not be enabled on this device." } }));
+      }
     },
+    disableNotifications: () => setData(d => ({
+      ...d,
+      notificationPrefs: { enabled: false, message: "Notifications are disabled." },
+    }), "Budget reminders disabled"),
     undo,
     canUndo: undoCount > 0,
   };
