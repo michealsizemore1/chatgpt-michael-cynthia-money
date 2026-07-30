@@ -839,6 +839,7 @@ function Modal({ open, onClose, title, children, wide, size }) {
         </div>
         <div className="p-6">{children}</div>
       </div>
+
     </div>
   );
 }
@@ -952,7 +953,7 @@ function LineChartCanvas({ labels, values, height }) {
   return <div style={{ height: height || 260 }}><canvas ref={ref}></canvas></div>;
 }
 
-function DoughnutChartCanvas({ labels, values, colors, height }) {
+function DoughnutChartCanvas({ labels, values, colors, height, onSliceClick }) {
   const ref = useRef(null);
   const chartRef = useRef(null);
 
@@ -964,6 +965,17 @@ function DoughnutChartCanvas({ labels, values, colors, height }) {
       data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: "#fff" }] },
       options: {
         responsive: true, maintainAspectRatio: false, cutout: "68%",
+        onClick: (event, elements) => {
+          if (elements && elements.length && onSliceClick) {
+            const index = elements[0].index;
+            onSliceClick(labels[index]);
+          }
+        },
+        onHover: (event, elements) => {
+          if (event && event.native && event.native.target) {
+            event.native.target.style.cursor = elements && elements.length && onSliceClick ? "pointer" : "default";
+          }
+        },
         plugins: {
           legend: { display: false },
           tooltip: { callbacks: { label: (ctx) => ctx.label + ": $" + ctx.parsed.toLocaleString() } },
@@ -971,7 +983,7 @@ function DoughnutChartCanvas({ labels, values, colors, height }) {
       },
     });
     return () => { if (chartRef.current) chartRef.current.destroy(); };
-  }, [JSON.stringify(labels), JSON.stringify(values)]);
+  }, [JSON.stringify(labels), JSON.stringify(values), onSliceClick]);
 
   return <div style={{ height: height || 220 }}><canvas ref={ref}></canvas></div>;
 }
@@ -1020,6 +1032,17 @@ function transactionHasCategory(t, category) {
   if (!t || !category) return false;
   if (t.category === category) return true;
   return transactionSplits(t).some(part => part.category === category);
+}
+
+function transactionCategoryAmount(t, category) {
+  if (!t) return 0;
+  const splits = transactionSplits(t);
+  if (splits.length) {
+    return splits
+      .filter(part => part.category === category)
+      .reduce((sum, part) => sum + Number(part.amount || 0), 0);
+  }
+  return t.category === category ? Math.abs(t.amount) : 0;
 }
 
 function transactionCategoryLabel(t) {
@@ -1218,6 +1241,8 @@ function SectionNotes({ section, data, actions }) {
 }
 
 function Dashboard({ data, derived, actions }) {
+  const [selectedPieCategory, setSelectedPieCategory] = useState(null);
+  const handlePieSliceClick = useCallback((category) => setSelectedPieCategory(category), []);
   const nwLabels = data.netWorthHistory.map(h => new Date(h.month + "-01T00:00:00").toLocaleDateString("en-US", { month: "short" }));
   const nwValues = data.netWorthHistory.map(h => h.netWorth);
 
@@ -1225,6 +1250,15 @@ function Dashboard({ data, derived, actions }) {
   const catLabels = catEntries.map(e => e[0]);
   const catValues = catEntries.map(e => e[1]);
   const catColors = catLabels.map(c => categoryColor(c));
+  const accountsById = Object.fromEntries(data.accounts.map(a => [a.id, a]));
+  const selectedCategoryExpenses = selectedPieCategory
+    ? data.transactions
+        .filter(t => monthKey(t.date) === derived.curMonth && t.amount < 0 && !t.excludeFromBudget)
+        .map(t => ({ transaction: t, categoryAmount: transactionCategoryAmount(t, selectedPieCategory) }))
+        .filter(item => item.categoryAmount > 0)
+        .sort((a, b) => a.transaction.date < b.transaction.date ? 1 : -1)
+    : [];
+  const selectedCategoryTotal = selectedCategoryExpenses.reduce((sum, item) => sum + item.categoryAmount, 0);
 
   const recentTx = [...data.transactions].slice(0, 6);
   const upcomingBills = derived.recurringItems
@@ -1302,7 +1336,8 @@ function Dashboard({ data, derived, actions }) {
               <div className="text-sm text-slate-400 py-10 text-center">No spending yet this month.</div>
             ) : (
               <React.Fragment>
-                <DoughnutChartCanvas labels={catLabels} values={catValues} colors={catColors} height={170} />
+                <DoughnutChartCanvas labels={catLabels} values={catValues} colors={catColors} height={170} onSliceClick={handlePieSliceClick} />
+                <div className="text-[11px] text-center text-slate-400 mt-1">Tap a slice to see its expenses</div>
                 <div className="mt-3 space-y-1.5 max-h-28 overflow-y-auto no-scrollbar">
                   {catEntries.slice(0, 5).map(([cat, amt]) => (
                     <div key={cat} className="flex items-center justify-between text-xs">
@@ -1419,6 +1454,27 @@ function Dashboard({ data, derived, actions }) {
           </div>
         </Card>
       </div>
+
+      <Modal open={!!selectedPieCategory} onClose={() => setSelectedPieCategory(null)} title={`${selectedPieCategory || ""} Expenses`}>
+        <div className="flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 mb-4">
+          <span className="text-sm text-indigo-700">{selectedCategoryExpenses.length} associated expense{selectedCategoryExpenses.length === 1 ? "" : "s"}</span>
+          <span className="font-bold text-indigo-800">{fmtCurrency(selectedCategoryTotal)}</span>
+        </div>
+        <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+          {selectedCategoryExpenses.map(({ transaction: t, categoryAmount }) => (
+            <div key={t.id} className="rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-medium text-slate-700 truncate">{t.merchant}</div>
+                <div className="text-xs text-slate-400 truncate">
+                  {fmtDateShort(t.date)} · {(accountsById[t.accountId] && accountsById[t.accountId].name) || "Account"}{transactionSplits(t).length ? ` · Total transaction ${fmtCurrency(Math.abs(t.amount))}` : ""}
+                </div>
+              </div>
+              <div className="font-semibold text-slate-700 shrink-0">{fmtCurrency(categoryAmount)}</div>
+            </div>
+          ))}
+          {selectedCategoryExpenses.length === 0 && <div className="text-sm text-slate-400 text-center py-8">No matching expenses.</div>}
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -1827,6 +1883,9 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
       return true;
     });
   }, [allTx, search, catFilter, typeFilter, fromDate, toDate]);
+  const filteredCategoryTotal = catFilter === "All"
+    ? 0
+    : filtered.reduce((sum, t) => sum + transactionCategoryAmount(t, catFilter), 0);
 
   const sorted = useMemo(() => {
     const byDateDesc = [...filtered].sort((a, b) => {
@@ -2037,11 +2096,19 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-3">
-            {(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate) && (
-              <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+            {catFilter !== "All" && (
+              <div className="rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
+                <span className="text-xs text-slate-500">{catFilter} total ({filtered.length} transaction{filtered.length === 1 ? "" : "s"})</span>
+                <span className="font-bold text-indigo-700 ml-2">{fmtCurrency(filteredCategoryTotal)}</span>
+              </div>
             )}
-            <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+            <div className="flex items-center gap-2 ml-auto">
+              {(search || catFilter !== "All" || typeFilter !== "All" || fromDate || toDate) && (
+                <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+              )}
+              <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+            </div>
           </div>
         </div>
 
@@ -2197,6 +2264,9 @@ function BankAccountRegister({ data, actions, account }) {
       return true;
     });
   }, [allTx, search, catFilter, dirFilter, fromDate, toDate]);
+  const filteredCategoryTotal = catFilter === "All"
+    ? 0
+    : filtered.reduce((sum, t) => sum + transactionCategoryAmount(t, catFilter), 0);
 
   const sorted = useMemo(() => {
     const byDateDesc = [...filtered].sort((a, b) => {
@@ -2395,11 +2465,19 @@ function BankAccountRegister({ data, actions, account }) {
               <input type="date" className={inputClass} value={toDate} onChange={e => setToDate(e.target.value)} />
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-3">
-            {(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate) && (
-              <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+          <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+            {catFilter !== "All" && (
+              <div className="rounded-lg border-2 border-indigo-200 bg-white px-3 py-2">
+                <span className="text-xs text-slate-500">{catFilter} total ({filtered.length} transaction{filtered.length === 1 ? "" : "s"})</span>
+                <span className="font-bold text-indigo-700 ml-2">{fmtCurrency(filteredCategoryTotal)}</span>
+              </div>
             )}
-            <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+            <div className="flex items-center gap-2 ml-auto">
+              {(search || catFilter !== "All" || dirFilter !== "All" || fromDate || toDate) && (
+                <button className="text-xs text-indigo-600 font-medium px-3 py-2" onClick={clearFilters}>Clear filters</button>
+              )}
+              <Button variant="secondary" className="text-xs px-3 py-2" onClick={() => exportTransactionsCSV(sorted, accountsById)}>⬇ Export CSV</Button>
+            </div>
           </div>
         </div>
 
