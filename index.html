@@ -687,10 +687,7 @@ function generateSeedData() {
   return { accounts, transactions, budgets: { ...DEFAULT_BUDGETS }, subscriptions, goals, netWorthHistory, recurringBills, rules, investments, paidBills: {}, customCategories: [] };
 }
 
-// A genuinely blank slate — no fictional accounts, transactions, subscriptions, goals,
-// bills, rules, investments, or budget targets. Used by "Reset Demo Data" so nothing from
-// the Michael & Cynthia sample dataset lingers; the real imported registers are re-applied
-// on top of this by ensureCindyRegister/ensureHouseholdRegisters right after.
+// A genuinely blank slate used only by the explicit "Clear All Data" action.
 function emptyData() {
   return { accounts: [], transactions: [], budgets: {}, subscriptions: [], goals: [], netWorthHistory: [], recurringBills: [], rules: [], investments: [], paidBills: {}, customCategories: [] };
 }
@@ -4069,10 +4066,6 @@ function Settings({ data, actions }) {
     reader.readAsText(file);
   };
 
-  const resetDemo = () => {
-    if (window.confirm("Clear the sample demo data (fictional accounts, transactions, budgets, goals, subscriptions)? Your real imported registers — Cindy's Credit Card, Cindy's Checking, Mike's Checking, Savings, and HYSA — will be kept, reset to their originally imported state. This can't be undone.")) actions.resetDemo();
-  };
-
   const clearEverything = () => {
     if (clearConfirmText.trim().toUpperCase() !== "DELETE") return;
     if (!window.confirm("This will permanently erase EVERYTHING in this app — including your real accounts, transactions, budgets, goals, and subscriptions, not just the demo data. There is no undo unless you've downloaded a backup. Are you absolutely sure?")) return;
@@ -4084,7 +4077,7 @@ function Settings({ data, actions }) {
     <div className="p-4 md:p-8 space-y-5 md:space-y-6">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-slate-800">Settings</h1>
-        <p className="text-slate-500 text-sm mt-1">Back up your data, restore a previous backup, or reset the sample data.</p>
+        <p className="text-slate-500 text-sm mt-1">Back up your data, restore a previous backup, or manage your account data.</p>
       </div>
 
       <SectionNotes section="settings" data={data} actions={actions} />
@@ -4154,14 +4147,6 @@ function Settings({ data, actions }) {
             </div>
           ))}
           {(data.auditLog || []).length === 0 && <div className="text-sm text-slate-400 py-3">No changes recorded yet.</div>}
-        </div>
-      </Card>
-
-      <Card className="p-5">
-        <h3 className="font-semibold text-slate-700">⚠️ Reset Demo Data</h3>
-        <p className="text-sm text-slate-500 mt-1">Clear the fictional Michael &amp; Cynthia sample data. Your real imported registers (Cindy's Credit Card, Cindy's Checking, Mike's Checking, Savings, and HYSA) are kept, reset to their originally imported state.</p>
-        <div className="mt-3">
-          <Button variant="secondary" onClick={resetDemo}>Reset Demo Data</Button>
         </div>
       </Card>
 
@@ -4501,10 +4486,8 @@ function App({ session, onSignOut }) {
       }),
     })),
 
-    resetDemo: () => { setData(ensureUserNamedSubscriptions(ensureDiscoverRegister(ensureHouseholdRegisters(ensureCindyRegister(emptyData()))))); },
     restoreData: (newData) => { setData(ensureUserNamedSubscriptions(ensureDiscoverRegister(ensureHouseholdRegisters(ensureCindyRegister(newData))))); },
-    // Unlike resetDemo, this does NOT re-apply the real-register migrations — it's a genuinely blank slate,
-    // wiping the user's real imported data along with the demo content.
+    // This is a genuinely blank slate, wiping the user's real imported data along with everything else.
     clearAllData: () => { setData(emptyData()); },
 
     addCategory: (name) => setData(d => {
