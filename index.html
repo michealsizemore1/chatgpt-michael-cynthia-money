@@ -1859,14 +1859,22 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
 
         <div ref={editFormRef} className={"border rounded-xl p-3 md:p-4 transition-colors " + (form.id ? "border-indigo-300 bg-indigo-50/40 ring-2 ring-indigo-100" : "border-slate-200")}>
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{form.id ? "✏️ Editing Transaction" : "Add Transaction"}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            <input type="date" className={inputClass} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-            <div className="col-span-2 md:col-span-2">
+          <div className="grid grid-cols-2 lg:grid-cols-12 gap-3 items-start">
+            <div className="col-span-2 lg:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Date</label>
+              <input type="date" className={inputClass} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            </div>
+            <div className="col-span-2 lg:col-span-4">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Description</label>
               <input placeholder="Description" className={inputClass} value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
               <Button variant="secondary" className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={() => splitSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>Split Transaction</Button>
             </div>
-            <input type="number" step="0.01" min="0" placeholder="$0.00" className={inputClass} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-            <div className="col-span-1">
+            <div className="col-span-1 lg:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Expense amount</label>
+              <input type="number" step="0.01" min="0" placeholder="$0.00" className={inputClass} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            </div>
+            <div className="col-span-1 lg:col-span-4">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Category</label>
               <select className={inputClass} disabled={form.regType === "payment"} value={form.regType === "payment" ? "Transfer" : form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {(form.regType === "payment" ? ["Transfer"] : allExpenseCategories(data)).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -1880,27 +1888,27 @@ function CindyCreditCardRegister({ data, actions, cindyAccount }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
+            <div className="flex w-full sm:w-auto rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
               {["expense", "return", "payment"].map(rt => (
                 <button
                   key={rt} type="button"
                   onClick={() => setForm(f => ({ ...f, regType: rt }))}
-                  className={"px-3 py-2 " + (form.regType === rt
+                  className={"flex-1 sm:flex-none px-3 py-2 " + (form.regType === rt
                     ? (rt === "expense" ? "bg-rose-600 text-white" : rt === "return" ? "bg-emerald-600 text-white" : "bg-indigo-600 text-white")
                     : "bg-white text-slate-500 hover:bg-slate-50")}
                 >{CINDY_TYPE_META[rt].label.toUpperCase()}</button>
               ))}
             </div>
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
+            <div className="flex w-full sm:w-auto rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
               {[{ v: "Michael", label: "🧔 ME" }, { v: "Cynthia", label: "👩 WIFE" }, { v: "Joint", label: "🤝 JOINT" }].map(opt => (
                 <button
                   key={opt.v} type="button"
                   onClick={() => setForm(f => ({ ...f, who: opt.v }))}
-                  className={"px-3 py-2 " + (form.who === opt.v ? "bg-slate-800 text-white" : "bg-white text-slate-500 hover:bg-slate-50")}
+                  className={"flex-1 sm:flex-none px-3 py-2 " + (form.who === opt.v ? "bg-slate-800 text-white" : "bg-white text-slate-500 hover:bg-slate-50")}
                 >{opt.label}</button>
               ))}
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+            <div className="flex w-full sm:w-auto flex-wrap items-center justify-end gap-2 sm:ml-auto">
               {form.id && <button type="button" className="text-xs text-slate-500 font-medium" onClick={resetForm}>Cancel</button>}
               <div className="sm:hidden">
                 <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
@@ -2216,14 +2224,22 @@ function BankAccountRegister({ data, actions, account }) {
 
         <div ref={editFormRef} className={"border rounded-xl p-3 md:p-4 transition-colors " + (form.id ? "border-indigo-300 bg-indigo-50/40 ring-2 ring-indigo-100" : "border-slate-200")}>
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">{form.id ? "✏️ Editing Transaction" : "Add Transaction"}</div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            <input type="date" className={inputClass} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
-            <div className="col-span-2 md:col-span-2">
+          <div className="grid grid-cols-2 lg:grid-cols-12 gap-3 items-start">
+            <div className="col-span-2 lg:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Date</label>
+              <input type="date" className={inputClass} value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            </div>
+            <div className="col-span-2 lg:col-span-4">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Description</label>
               <input placeholder="Description" className={inputClass} value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
               <Button variant="secondary" className="text-xs px-3 py-2 mt-2 w-full sm:w-auto" onClick={() => splitSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>Split Transaction</Button>
             </div>
-            <input type="number" step="0.01" min="0" placeholder="$0.00" className={inputClass} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-            <div className="col-span-1">
+            <div className="col-span-1 lg:col-span-2">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Amount</label>
+              <input type="number" step="0.01" min="0" placeholder="$0.00" className={inputClass} value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+            </div>
+            <div className="col-span-1 lg:col-span-4">
+              <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Category</label>
               <select className={inputClass} value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
                 {allCategoriesFull(data).map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -2237,18 +2253,18 @@ function BankAccountRegister({ data, actions, account }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mt-3">
-            <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
+            <div className="flex w-full sm:w-auto rounded-lg border border-slate-200 overflow-hidden text-xs font-semibold">
               {["withdrawal", "deposit"].map(d => (
                 <button
                   key={d} type="button"
                   onClick={() => setForm(f => ({ ...f, direction: d }))}
-                  className={"px-3 py-2 " + (form.direction === d
+                  className={"flex-1 sm:flex-none px-3 py-2 " + (form.direction === d
                     ? (d === "withdrawal" ? "bg-rose-600 text-white" : "bg-emerald-600 text-white")
                     : "bg-white text-slate-500 hover:bg-slate-50")}
                 >{d === "withdrawal" ? "WITHDRAWAL" : "DEPOSIT"}</button>
               ))}
             </div>
-            <div className="flex flex-wrap items-center justify-end gap-2 ml-auto">
+            <div className="flex w-full sm:w-auto flex-wrap items-center justify-end gap-2 sm:ml-auto">
               {form.id && <button type="button" className="text-xs text-slate-500 font-medium" onClick={resetForm}>Cancel</button>}
               <div className="sm:hidden">
                 <AddCategoryButton data={data} actions={actions} showLabel={true} onAdded={category => setForm(f => ({ ...f, category }))} />
