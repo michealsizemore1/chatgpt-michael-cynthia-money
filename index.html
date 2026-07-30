@@ -3643,20 +3643,19 @@ function Accounts({ data, actions, derived }) {
 
 /* ============================== AI ASSISTANT ============================== */
 
-const AI_KEY_STORAGE = "meridian_money_ai_key";
 const AI_MODEL_STORAGE = "meridian_money_ai_model";
 const AI_CHAT_STORAGE = "meridian_money_ai_chat";
-const AI_GREETING = "Hi! I'm your AI assistant for Michael & Cynthia's Money. Ask me anything about your budget, spending, or accounts — or ask me to scan your transactions for subscriptions you might not be tracking yet.";
+const AI_GREETING = "Hi! I'm your Budget AI. I can search your budget and, when current outside information is needed, search the web. Try “How much did we spend on groceries?” or “Search the web for current high-yield savings rates.”";
 const ANTHROPIC_MODELS = [
   { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — fast & cheap" },
-  { id: "claude-sonnet-5", label: "Claude Sonnet 5 — smarter, costs more" },
+  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 — smarter, costs more" },
 ];
 
 function buildFinancialContext(data, derived) {
   const lines = [];
-  lines.push(`Today's date: July 27, 2026.`);
-  lines.push(`Net worth: ${fmtCurrency(derived.netWorth, { decimals: false })} (assets ${fmtCurrency(derived.totalAssets, { decimals: false })}, debt ${fmtCurrency(derived.totalDebt, { decimals: false })}).`);
-  lines.push(`Accounts: ${data.accounts.map(a => `${a.name} (${a.institution}, ${a.type}): ${fmtCurrency(a.balance, { decimals: false })}`).join("; ") || "none"}.`);
+  lines.push(`Today's date: ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.`);
+  lines.push(`Net worth: ${fmtCurrency(derived.netWorth)} (assets ${fmtCurrency(derived.totalAssets)}, debt ${fmtCurrency(derived.totalDebt)}).`);
+  lines.push(`Accounts: ${data.accounts.map(a => `${a.name} (${a.institution}, ${a.type}): ${fmtCurrency(a.balance)}`).join("; ") || "none"}.`);
   lines.push(`This month so far — income: ${fmtCurrency(derived.monthIncome, { decimals: false })}, expenses: ${fmtCurrency(derived.monthExpense, { decimals: false })}, savings rate: ${derived.savingsRate.toFixed(0)}%.`);
   const catLines = Object.entries(derived.spendByCategory).sort((a, b) => b[1] - a[1])
     .map(([cat, spent]) => `${cat}: spent ${fmtCurrency(spent, { decimals: false })}${data.budgets[cat] ? ` of ${fmtCurrency(data.budgets[cat], { decimals: false })} budget` : ""}`);
@@ -3668,30 +3667,35 @@ function buildFinancialContext(data, derived) {
   if (data.goals.length > 0) {
     lines.push(`Goals: ${data.goals.map(g => `${g.name}: ${fmtCurrency(g.current, { decimals: false })} of ${fmtCurrency(g.target, { decimals: false })}`).join("; ")}.`);
   }
-  const recent = [...data.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 15);
-  lines.push(`15 most recent transactions: ${recent.map(t => `${t.date} ${t.merchant} ${fmtCurrency(t.amount)} (${t.category}${t.person ? ", " + t.person : ""})`).join("; ")}.`);
+  const searchableTransactions = [...data.transactions].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 500);
+  lines.push(`Searchable transaction register (${searchableTransactions.length} transactions, newest first): ${searchableTransactions.map(t => `${t.date} | ${t.merchant} | ${fmtCurrency(t.amount)} | ${t.category}${t.person ? " | " + t.person : ""}`).join("; ")}.`);
   return lines.join("\n");
 }
 
-async function callClaude({ apiKey, model, system, messages }) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+async function callClaude({ model, system, messages }) {
+  const sessionResult = await supabaseClient.auth.getSession();
+  const accessToken = sessionResult?.data?.session?.access_token;
+  if (!accessToken) throw new Error("Please sign in again before using Budget AI.");
+
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/budget-ai`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+      "apikey": SUPABASE_PUBLISHABLE_KEY,
+      "authorization": `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ model, max_tokens: 1024, system, messages }),
   });
   if (!res.ok) {
     let detail = "";
-    try { const j = await res.json(); detail = (j.error && j.error.message) || JSON.stringify(j); } catch (e) {}
-    throw new Error(`Anthropic API error (${res.status}): ${detail || res.statusText}`);
+    try { const j = await res.json(); detail = j.error || j.message || JSON.stringify(j); } catch (e) {}
+    throw new Error(`Budget AI error (${res.status}): ${detail || res.statusText}`);
   }
   const json = await res.json();
-  const text = (json.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-  return text || "(no response)";
+  const sources = Array.isArray(json.sources) && json.sources.length
+    ? "\n\nSources:\n" + json.sources.map(s => `• ${s.title || s.url}: ${s.url}`).join("\n")
+    : "";
+  return (json.text || "(no response)") + sources;
 }
 
 function isSubscriptionScanIntent(msg) {
@@ -3724,8 +3728,6 @@ function SubscriptionCandidateCard({ candidate, onAdd, onIgnore, status }) {
 }
 
 function AIAssistant({ data, actions, derived }) {
-  const [apiKey, setApiKey] = useState(() => { try { return localStorage.getItem(AI_KEY_STORAGE) || ""; } catch (e) { return ""; } });
-  const [keyInput, setKeyInput] = useState("");
   const [model, setModel] = useState(() => { try { return localStorage.getItem(AI_MODEL_STORAGE) || ANTHROPIC_MODELS[0].id; } catch (e) { return ANTHROPIC_MODELS[0].id; } });
   const [messages, setMessages] = useState(() => {
     try {
@@ -3767,18 +3769,6 @@ function AIAssistant({ data, actions, derived }) {
     setMessages([{ role: "assistant", content: AI_GREETING }]);
   };
 
-  const saveKey = () => {
-    const k = keyInput.trim();
-    if (!k) return;
-    try { localStorage.setItem(AI_KEY_STORAGE, k); } catch (e) {}
-    setApiKey(k);
-    setKeyInput("");
-  };
-  const clearKey = () => {
-    if (!window.confirm("Remove your saved API key from this browser?")) return;
-    try { localStorage.removeItem(AI_KEY_STORAGE); } catch (e) {}
-    setApiKey("");
-  };
   const changeModel = (id) => {
     setModel(id);
     try { localStorage.setItem(AI_MODEL_STORAGE, id); } catch (e) {}
@@ -3813,19 +3803,14 @@ function AIAssistant({ data, actions, derived }) {
       return;
     }
 
-    if (!apiKey) {
-      setMessages(m => [...m, { role: "assistant", content: "Add your Anthropic API key above to chat with me about open-ended questions — or ask me to \"scan for subscriptions,\" which works without a key." }]);
-      return;
-    }
-
     setSending(true);
     try {
-      const system = "You are a helpful, concise personal finance assistant embedded in a couple's budgeting app called \"Michael & Cynthia's Money.\" Answer questions using the financial data below. Be specific and use real numbers from the data. Keep answers brief and conversational unless asked for detail.\n\n" + buildFinancialContext(data, derived);
+      const system = "You are a helpful, concise personal finance assistant embedded in a couple's budgeting app called \"Michael & Cynthia's Money.\" Answer questions using the household financial context below. Be specific and use real numbers from the data. When the user asks for current, changing, or outside information, use web search and clearly distinguish outside information from the household's own records. Never invent transactions or balances. Keep answers brief and conversational unless asked for detail.\n\n" + buildFinancialContext(data, derived);
       const history = nextMessages
         .filter(m => !m.candidates)
         .slice(-20)
         .map(m => ({ role: m.role, content: m.content }));
-      const reply = await callClaude({ apiKey, model, system, messages: history });
+      const reply = await callClaude({ model, system, messages: history });
       setMessages(m => [...m, { role: "assistant", content: reply }]);
     } catch (e) {
       setError(e.message || "Something went wrong talking to the AI.");
@@ -3847,8 +3832,8 @@ function AIAssistant({ data, actions, derived }) {
   return (
     <div className="p-4 md:p-8 space-y-5 md:space-y-6">
       <div>
-        <h1 className="text-xl md:text-2xl font-bold text-slate-800">AI Assistant</h1>
-        <p className="text-slate-500 text-sm mt-1">Ask questions about your finances, or have it scan for untracked subscriptions.</p>
+        <h1 className="text-xl md:text-2xl font-bold text-slate-800">Budget AI</h1>
+        <p className="text-slate-500 text-sm mt-1">Search your household budget or ask Claude to research current information on the web.</p>
       </div>
 
       <SectionNotes section="ai" data={data} actions={actions} />
@@ -3856,35 +3841,15 @@ function AIAssistant({ data, actions, derived }) {
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
-            <span className="font-medium text-slate-700">Anthropic API key: </span>
-            {apiKey ? (
-              <span className="text-emerald-600 font-medium">Connected ({apiKey.slice(0, 8)}…)</span>
-            ) : (
-              <span className="text-slate-400">Not set — open-ended chat is unavailable until you add one</span>
-            )}
+            <span className="font-medium text-slate-700">Secure AI connection: </span>
+            <span className="text-emerald-600 font-medium">Supabase protected</span>
           </div>
-          {apiKey && (
-            <div className="flex items-center gap-2">
-              <select className={inputClass + " max-w-[260px]"} value={model} onChange={e => changeModel(e.target.value)}>
-                {ANTHROPIC_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-              <button className="text-xs text-rose-500 font-medium" onClick={clearKey}>Remove key</button>
-            </div>
-          )}
+          <select className={inputClass + " max-w-[260px]"} value={model} onChange={e => changeModel(e.target.value)}>
+            {ANTHROPIC_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
         </div>
-        {!apiKey && (
-          <div className="mt-3 flex flex-wrap gap-2 items-center">
-            <input
-              type="password" placeholder="sk-ant-..." className={inputClass + " max-w-xs"}
-              value={keyInput} onChange={e => setKeyInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") saveKey(); }}
-            />
-            <Button className="text-xs px-3 py-2" onClick={saveKey}>Save Key</Button>
-          </div>
-        )}
         <p className="text-xs text-slate-400 mt-2">
-          Your key is stored only in this browser's local storage and sent directly from your browser to Anthropic's API when you chat — it never passes through any server of ours. Don't use this on a shared or public computer. Get a key at{" "}
-          <span className="text-indigo-500">console.anthropic.com</span>.
+          Your Anthropic key stays inside Supabase. Budget details needed to answer your question are sent securely to Claude; web search is used only when your question needs outside or current information.
         </p>
       </Card>
 
@@ -3926,7 +3891,7 @@ function AIAssistant({ data, actions, derived }) {
         <div className="border-t border-slate-100 p-3 flex gap-2 items-center flex-wrap">
           <Button variant="secondary" className="text-xs px-3 py-2" onClick={runSubscriptionScan}>🔍 Scan for Subscriptions</Button>
           <input
-            className={inputClass + " flex-1 min-w-[160px]"} placeholder="Ask about your budget, spending, accounts…"
+            className={inputClass + " flex-1 min-w-[160px]"} placeholder="Ask about your budget or search the web…"
             value={input} onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") send(); }}
           />
