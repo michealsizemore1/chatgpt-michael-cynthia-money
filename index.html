@@ -44,6 +44,7 @@ const supabaseClient = window.supabase
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: location.protocol !== "file:",
+        storage: window.sessionStorage,
         // Avoid a stale browser-tab lock leaving sign-in stuck on "Please wait".
         lock: async (_name, _acquireTimeout, operation) => await operation(),
       },
@@ -697,8 +698,14 @@ function emptyData() {
 /* Private embedded registers removed from this public build. */
 const CINDY_CC_ACCOUNT_ID = "acc_cindy_cc";
 const CINDY_CC_ACCOUNT_NAME = "Cindy's Credit Card";
+const CHK_ACCOUNT_ID = "acc_cindy_chk";
+const CHK_ACCOUNT_NAME = "Cindy's Checking";
 const MIKE_ACCOUNT_ID = "acc_mike_chk";
 const MIKE_ACCOUNT_NAME = "Mike's Checking";
+const SAVINGS_ACCOUNT_ID = "acc_household_savings";
+const SAVINGS_ACCOUNT_NAME = "Household Savings";
+const HYSA_ACCOUNT_ID = "acc_household_hysa";
+const HYSA_ACCOUNT_NAME = "Household HYSA";
 const DISCOVER_ACCOUNT_ID = "acc_discover_cc";
 const DISCOVER_ACCOUNT_NAME = "Discovercard";
 
