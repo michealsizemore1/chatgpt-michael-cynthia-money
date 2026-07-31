@@ -1217,6 +1217,8 @@ function SectionNotes({ section, data, actions }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(stored);
 
+  useEffect(() => { setText(stored); }, [stored, section]);
+
   const save = (val) => { setText(val); actions.setSectionNotes(section, val); };
 
   return (
@@ -3093,10 +3095,10 @@ function Transactions({ data, actions }) {
             <p className="text-slate-500 text-sm mt-1">{filtered.length} transactions{!sectionOpen ? " · section collapsed" : ""}</p>
           </div>
         </button>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto">
           <Button variant="secondary" className="w-full sm:w-auto" onClick={() => setImportOpen(true)}>⬆ Import Statement</Button>
           <Button variant="secondary" className="w-full sm:w-auto" onClick={() => exportTransactionsCSV(filtered, accountsById)}>⬇ Export CSV</Button>
-          <Button className="w-full sm:w-auto" onClick={openAdd}>+ Add Transaction</Button>
+          <Button className="col-span-2 w-full sm:w-auto" onClick={openAdd}>+ Add Transaction</Button>
         </div>
       </div>
 
