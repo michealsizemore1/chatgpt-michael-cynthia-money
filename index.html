@@ -162,7 +162,11 @@ const DEFAULT_BUDGETS = {
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
 // The app treats "today" as a fixed date (2026-07-27) throughout — same convention used by
 // useDerived() and the Cash Flow calendar — so newly-logged price history lines up with it.
-function todayISO() { return "2026-07-27"; }
+function todayISO() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
 
 function fmtCurrency(n, opts) {
   const o = opts || {};
@@ -1669,7 +1673,7 @@ function Watchlists({ data, actions, selectedMonth }) {
 /* ============================== TRANSACTIONS ============================== */
 
 function TransactionModal({ open, onClose, onSave, initial, accounts, rules, defaultAccountId }) {
-  const blank = { date: new Date().toISOString().slice(0, 10), accountId: defaultAccountId || accounts[0]?.id || "", merchant: "", category: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Personal Support" : "Other", amount: "", notes: "", tags: [], excludeFromBudget: false, needsReview: false, person: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Cynthia" : "Joint", receipt: null };
+  const blank = { date: todayISO(), accountId: defaultAccountId || accounts[0]?.id || "", merchant: "", category: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Personal Support" : "Other", amount: "", notes: "", tags: [], excludeFromBudget: false, needsReview: false, person: defaultAccountId === CINDY_CC_ACCOUNT_ID ? "Cynthia" : "Joint", receipt: null };
   const [form, setForm] = useState(initial || blank);
   const [receiptBusy, setReceiptBusy] = useState(false);
   useEffect(() => { setForm(initial || blank); }, [initial, open, defaultAccountId]);
@@ -1837,7 +1841,7 @@ function RegStat({ label, value, tone }) {
 }
 
 function CindyCreditCardRegister({ data, actions, cindyAccount }) {
-  const blankForm = { id: null, date: isoDate(2026, 7, 27), desc: "", amount: "", category: EXPENSE_CATEGORIES[0], regType: "expense", who: "Cynthia", receipt: null };
+  const blankForm = { id: null, date: todayISO(), desc: "", amount: "", category: EXPENSE_CATEGORIES[0], regType: "expense", who: "Cynthia", receipt: null };
   const [form, setForm] = useState(blankForm);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
@@ -2226,7 +2230,7 @@ function defaultPersonForAccount(accountId) {
 }
 
 function BankAccountRegister({ data, actions, account }) {
-  const blankForm = { id: null, date: isoDate(2026, 7, 27), desc: "", amount: "", category: "Other", direction: "withdrawal", receipt: null };
+  const blankForm = { id: null, date: todayISO(), desc: "", amount: "", category: "Other", direction: "withdrawal", receipt: null };
   const [form, setForm] = useState(blankForm);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
