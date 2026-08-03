@@ -764,6 +764,7 @@ function normalizeBudgetData(data) {
     recurringBills: data.recurringBills || [],
     rules: data.rules || [],
     investments: data.investments || [],
+    netWorthHistory: data.netWorthHistory || [],
     investmentContributions: data.investmentContributions || [],
     investmentStartingValue: Number(data.investmentStartingValue) || 0,
     paycheckItems: data.paycheckItems || [],
@@ -1085,8 +1086,8 @@ function useDerived(data) {
     const totalAssets = data.accounts.filter(a => !isLiability(a) && a.balance > 0).reduce((s, a) => s + a.balance, 0);
     const totalDebt = data.accounts.filter(a => isLiability(a) || a.balance < 0).reduce((s, a) => s + Math.abs(Number(a.balance) || 0), 0);
 
-    const now = new Date("2026-07-27T00:00:00");
-    const curMonth = now.toISOString().slice(0, 7);
+    const now = new Date();
+    const curMonth = todayISO().slice(0, 7);
 
     const monthTx = data.transactions.filter(t => monthKey(t.date) === curMonth && !t.excludeFromBudget);
     const spendByCategory = {};
@@ -1271,8 +1272,15 @@ function SectionNotes({ section, data, actions }) {
 function Dashboard({ data, derived, actions }) {
   const [selectedPieCategory, setSelectedPieCategory] = useState(null);
   const handlePieSliceClick = useCallback((category) => setSelectedPieCategory(category), []);
-  const nwLabels = data.netWorthHistory.map(h => new Date(h.month + "-01T00:00:00").toLocaleDateString("en-US", { month: "short" }));
-  const nwValues = data.netWorthHistory.map(h => h.netWorth);
+  const currentNetWorthMonth = todayISO().slice(0, 7);
+  const netWorthHistory = [...(data.netWorthHistory || []).filter(item => item && item.month && Number.isFinite(Number(item.netWorth)))];
+  const currentHistoryIndex = netWorthHistory.findIndex(item => item.month === currentNetWorthMonth);
+  const currentHistoryPoint = { month: currentNetWorthMonth, netWorth: derived.netWorth };
+  if (currentHistoryIndex >= 0) netWorthHistory[currentHistoryIndex] = currentHistoryPoint;
+  else netWorthHistory.push(currentHistoryPoint);
+  const visibleNetWorthHistory = netWorthHistory.sort((a, b) => a.month.localeCompare(b.month)).slice(-7);
+  const nwLabels = visibleNetWorthHistory.map(h => new Date(h.month + "-01T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }));
+  const nwValues = visibleNetWorthHistory.map(h => Number(h.netWorth));
 
   const catEntries = Object.entries(derived.spendByCategory).sort((a, b) => b[1] - a[1]);
   const catLabels = catEntries.map(e => e[0]);
@@ -1305,7 +1313,7 @@ function Dashboard({ data, derived, actions }) {
     <div className="px-2 py-4 sm:p-4 md:p-8 space-y-5 md:space-y-6 w-full min-w-0">
       <div>
         <h1 className="text-xl md:text-2xl font-bold text-slate-800">Good to see you, Michael &amp; Cynthia 👋</h1>
-        <p className="text-slate-500 text-sm mt-1">Here's your financial overview for {new Date("2026-07-27").toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
+        <p className="text-slate-500 text-sm mt-1">Here's your financial overview for {new Date(todayISO() + "T00:00:00").toLocaleDateString("en-US", { month: "long", year: "numeric" })}.</p>
       </div>
 
       <SectionNotes section="dashboard" data={data} actions={actions} />
@@ -1353,7 +1361,10 @@ function Dashboard({ data, derived, actions }) {
         <Card className="md:col-span-2 p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold text-slate-700">Net Worth Trend</h3>
-            <Pill tone="indigo">Last 7 months</Pill>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-600">{fmtCurrency(derived.netWorth, { decimals: false })}</span>
+              <Pill tone="indigo">Last 7 months</Pill>
+            </div>
           </div>
           <LineChartCanvas labels={nwLabels} values={nwValues} />
         </Card>
@@ -5221,6 +5232,20 @@ function App({ session, onSignOut }) {
     ? data
     : { ...data, transactions: data.transactions.filter(t => !t.person || t.person === "Joint" || t.person === viewer) };
   const derived = useDerived(visibleData);
+
+  useEffect(() => {
+    const month = todayISO().slice(0, 7);
+    rawSetData(current => {
+      const history = [...(current.netWorthHistory || [])];
+      const index = history.findIndex(item => item.month === month);
+      const savedValue = index >= 0 ? Number(history[index].netWorth) : null;
+      if (savedValue === derived.netWorth) return current;
+      const point = { month, netWorth: derived.netWorth };
+      if (index >= 0) history[index] = point;
+      else history.push(point);
+      return { ...current, netWorthHistory: history.sort((a, b) => a.month.localeCompare(b.month)).slice(-24) };
+    });
+  }, [derived.netWorth]);
 
   useEffect(() => {
     if (!(data.notificationPrefs || {}).enabled || typeof Notification === "undefined" || Notification.permission !== "granted") return;
