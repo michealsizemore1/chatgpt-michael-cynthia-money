@@ -767,6 +767,7 @@ function normalizeBudgetData(data) {
     netWorthHistory: data.netWorthHistory || [],
     investmentContributions: data.investmentContributions || [],
     investmentStartingValue: Number(data.investmentStartingValue) || 0,
+    investmentCurrentValue: data.investmentCurrentValue == null || data.investmentCurrentValue === "" ? null : Number(data.investmentCurrentValue),
     paycheckItems: data.paycheckItems || [],
     watchlists: data.watchlists || [],
     paidBills: data.paidBills || {},
@@ -4097,7 +4098,8 @@ function InvestmentContributions({ data, actions }) {
     ...data.accounts.filter(a => a.type === "investment").map(a => ({ id: `account:${a.id}`, name: a.name })),
   ];
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    id: null,
+    date: todayISO(),
     targetId: targets[0]?.id || "general",
     amount: "",
     note: "",
@@ -4107,25 +4109,40 @@ function InvestmentContributions({ data, actions }) {
   const monthTotal = contributions.filter(c => c.date.slice(0, 7) === currentMonth).reduce((sum, c) => sum + c.amount, 0);
   const yearTotal = contributions.filter(c => c.date.slice(0, 4) === currentMonth.slice(0, 4)).reduce((sum, c) => sum + c.amount, 0);
   const lifetimeContributions = contributions.reduce((sum, c) => sum + c.amount, 0);
-  const currentValue = (data.investments || []).reduce((sum, i) => sum + i.value, 0);
+  const hasCurrentValue = data.investmentCurrentValue != null && data.investmentCurrentValue !== "" && Number.isFinite(Number(data.investmentCurrentValue));
+  const currentValue = hasCurrentValue ? Number(data.investmentCurrentValue) : 0;
   const startingValue = Number(data.investmentStartingValue) || 0;
-  const marketChange = startingValue > 0 ? currentValue - startingValue - lifetimeContributions : null;
+  const marketChange = startingValue > 0 && hasCurrentValue ? currentValue - startingValue - lifetimeContributions : null;
 
   const save = (e) => {
     e.preventDefault();
     const amount = parseFloat(form.amount);
     if (!Number.isFinite(amount) || amount <= 0) return;
     const target = targets.find(t => t.id === form.targetId);
-    actions.addInvestmentContribution({
-      id: uid(),
+    const contribution = {
+      id: form.id || uid(),
       date: form.date,
       targetId: form.targetId,
       targetName: target?.name || "General Investments",
       amount,
       note: form.note.trim(),
-    });
-    setForm(f => ({ ...f, amount: "", note: "" }));
+    };
+    if (form.id) actions.updateInvestmentContribution(contribution);
+    else actions.addInvestmentContribution(contribution);
+    setForm(f => ({ ...f, id: null, date: todayISO(), amount: "", note: "" }));
   };
+
+  const editContribution = (contribution) => {
+    setForm({
+      id: contribution.id,
+      date: contribution.date,
+      targetId: contribution.targetId || "general",
+      amount: String(contribution.amount),
+      note: contribution.note || "",
+    });
+  };
+
+  const cancelEdit = () => setForm(f => ({ ...f, id: null, date: todayISO(), amount: "", note: "" }));
 
   return (
     <Card className="p-5 md:p-6">
@@ -4151,10 +4168,13 @@ function InvestmentContributions({ data, actions }) {
           <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Starting portfolio value</span>
           <input type="number" step="0.01" className={inputClass} placeholder="Enter baseline" value={startingValue || ""} onChange={e => actions.setInvestmentStartingValue(parseFloat(e.target.value) || 0)} />
         </label>
-        <div className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] uppercase tracking-wide text-slate-400">Current holdings value</div><div className="text-lg font-bold text-slate-700 mt-1">{fmtCurrency(currentValue)}</div></div>
+        <label className="rounded-xl bg-slate-50 p-3">
+          <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Current holding value</span>
+          <input type="number" min="0" step="0.01" className={inputClass} placeholder="Enter current value" value={hasCurrentValue ? data.investmentCurrentValue : ""} onChange={e => actions.setInvestmentCurrentValue(e.target.value === "" ? null : parseFloat(e.target.value))} />
+        </label>
         <div className={"rounded-xl p-3 " + (marketChange == null ? "bg-slate-50" : marketChange >= 0 ? "bg-emerald-50" : "bg-rose-50")}>
           <div className="text-[10px] uppercase tracking-wide text-slate-400">Estimated market gain/loss</div>
-          <div className={"text-lg font-bold mt-1 " + (marketChange == null ? "text-slate-400" : marketChange >= 0 ? "text-emerald-700" : "text-rose-700")}>{marketChange == null ? "Add baseline" : fmtCurrency(marketChange)}</div>
+          <div className={"text-lg font-bold mt-1 " + (marketChange == null ? "text-slate-400" : marketChange >= 0 ? "text-emerald-700" : "text-rose-700")}>{marketChange == null ? (startingValue > 0 ? "Add current value" : "Add baseline") : fmtCurrency(marketChange)}</div>
         </div>
       </div>
 
@@ -4183,7 +4203,8 @@ function InvestmentContributions({ data, actions }) {
         </Field>
         </div>
         <div className="xl:col-span-2 mb-3">
-          <Button type="submit" className="w-full min-h-[42px] whitespace-nowrap">Add Contribution</Button>
+          <Button type="submit" className="w-full min-h-[42px] whitespace-nowrap">{form.id ? "Save Changes" : "Add Contribution"}</Button>
+          {form.id && <button type="button" className="w-full text-xs text-slate-500 font-medium mt-2" onClick={cancelEdit}>Cancel edit</button>}
         </div>
       </form>
 
@@ -4199,6 +4220,7 @@ function InvestmentContributions({ data, actions }) {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-sm font-semibold text-emerald-600">+{fmtCurrency(c.amount)}</span>
+                  <button type="button" className="text-xs text-indigo-600 font-medium" onClick={() => editContribution(c)}>Edit</button>
                   <button type="button" className="text-xs text-rose-500 font-medium" onClick={() => actions.deleteInvestmentContribution(c.id)}>Delete</button>
                 </div>
               </div>
@@ -5408,6 +5430,10 @@ function App({ session, onSignOut }) {
       ...d,
       investmentContributions: [...(d.investmentContributions || []), contribution],
     }), "Investment contribution added"),
+    updateInvestmentContribution: (contribution) => setData(d => ({
+      ...d,
+      investmentContributions: (d.investmentContributions || []).map(item => item.id === contribution.id ? contribution : item),
+    }), "Investment contribution updated"),
     deleteInvestmentContribution: (id) => setData(d => ({
       ...d,
       investmentContributions: (d.investmentContributions || []).filter(c => c.id !== id),
@@ -5416,6 +5442,10 @@ function App({ session, onSignOut }) {
       ...d,
       investmentStartingValue: Number(value) || 0,
     }), "Investment baseline updated"),
+    setInvestmentCurrentValue: (value) => setData(d => ({
+      ...d,
+      investmentCurrentValue: value == null || value === "" ? null : Number(value),
+    }), "Investment current value updated"),
     addPaycheckItem: (item) => setData(d => ({
       ...d,
       paycheckItems: [...(d.paycheckItems || []), item],
