@@ -1282,7 +1282,7 @@ function Dashboard({ data, derived, actions }) {
   const nwLabels = visibleNetWorthHistory.map(h => new Date(h.month + "-01T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" }));
   const nwValues = visibleNetWorthHistory.map(h => Number(h.netWorth));
 
-  const catEntries = Object.entries(derived.spendByCategory).sort((a, b) => b[1] - a[1]);
+  const catEntries = Object.entries(derived.spendByCategory).filter(([, amount]) => amount >= 1).sort((a, b) => b[1] - a[1]);
   const catLabels = catEntries.map(e => e[0]);
   const catValues = catEntries.map(e => e[1]);
   const catColors = catLabels.map(c => categoryColor(c));
@@ -1377,8 +1377,8 @@ function Dashboard({ data, derived, actions }) {
               <React.Fragment>
                 <DoughnutChartCanvas labels={catLabels} values={catValues} colors={catColors} height={170} onSliceClick={handlePieSliceClick} />
                 <div className="text-[11px] text-center text-slate-400 mt-1">Tap a slice to see its expenses</div>
-                <div className="mt-3 space-y-1.5 max-h-28 overflow-y-auto no-scrollbar">
-                  {catEntries.slice(0, 5).map(([cat, amt]) => (
+                <div className="mt-3 space-y-1.5">
+                  {catEntries.map(([cat, amt]) => (
                     <div key={cat} className="flex items-center justify-between text-xs">
                       <span className="flex items-center gap-1.5 text-slate-600"><span className="w-2 h-2 rounded-full inline-block" style={{ background: categoryColor(cat) }}></span>{cat}</span>
                       <span className="font-medium text-slate-700">{fmtCurrency(amt)}</span>
