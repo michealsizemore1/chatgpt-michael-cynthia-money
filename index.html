@@ -768,6 +768,7 @@ function normalizeBudgetData(data) {
     investmentContributions: data.investmentContributions || [],
     investmentStartingValue: Number(data.investmentStartingValue) || 0,
     investmentCurrentValue: data.investmentCurrentValue == null || data.investmentCurrentValue === "" ? null : Number(data.investmentCurrentValue),
+    investmentBaselineDate: data.investmentBaselineDate || todayISO(),
     paycheckItems: data.paycheckItems || [],
     watchlists: data.watchlists || [],
     paidBills: data.paidBills || {},
@@ -4109,10 +4110,12 @@ function InvestmentContributions({ data, actions }) {
   const monthTotal = contributions.filter(c => c.date.slice(0, 7) === currentMonth).reduce((sum, c) => sum + c.amount, 0);
   const yearTotal = contributions.filter(c => c.date.slice(0, 4) === currentMonth.slice(0, 4)).reduce((sum, c) => sum + c.amount, 0);
   const lifetimeContributions = contributions.reduce((sum, c) => sum + c.amount, 0);
+  const baselineDate = data.investmentBaselineDate || todayISO();
+  const contributionsSinceBaseline = contributions.filter(c => c.date > baselineDate).reduce((sum, c) => sum + c.amount, 0);
   const hasCurrentValue = data.investmentCurrentValue != null && data.investmentCurrentValue !== "" && Number.isFinite(Number(data.investmentCurrentValue));
   const currentValue = hasCurrentValue ? Number(data.investmentCurrentValue) : 0;
   const startingValue = Number(data.investmentStartingValue) || 0;
-  const marketChange = startingValue > 0 && hasCurrentValue ? currentValue - startingValue - lifetimeContributions : null;
+  const marketChange = startingValue > 0 && hasCurrentValue ? currentValue - startingValue - contributionsSinceBaseline : null;
 
   const save = (e) => {
     e.preventDefault();
@@ -4163,10 +4166,14 @@ function InvestmentContributions({ data, actions }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
         <label className="rounded-xl bg-slate-50 p-3">
           <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Starting portfolio value</span>
           <input type="number" step="0.01" className={inputClass} placeholder="Enter baseline" value={startingValue || ""} onChange={e => actions.setInvestmentStartingValue(parseFloat(e.target.value) || 0)} />
+        </label>
+        <label className="rounded-xl bg-slate-50 p-3">
+          <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Tracking start date</span>
+          <input type="date" className={inputClass} value={baselineDate} onChange={e => actions.setInvestmentBaselineDate(e.target.value || todayISO())} />
         </label>
         <label className="rounded-xl bg-slate-50 p-3">
           <span className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">Current holding value</span>
@@ -4177,6 +4184,7 @@ function InvestmentContributions({ data, actions }) {
           <div className={"text-lg font-bold mt-1 " + (marketChange == null ? "text-slate-400" : marketChange >= 0 ? "text-emerald-700" : "text-rose-700")}>{marketChange == null ? (startingValue > 0 ? "Add current value" : "Add baseline") : fmtCurrency(marketChange)}</div>
         </div>
       </div>
+      <div className="text-xs text-slate-400 -mt-2 mb-4">Gain/loss uses contributions entered after {fmtDate(baselineDate)}. Contributions on or before the tracking start date are treated as part of the starting value.</div>
 
       <form onSubmit={save} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-x-3 gap-y-1 items-end">
         <div className="xl:col-span-2">
@@ -5446,6 +5454,10 @@ function App({ session, onSignOut }) {
       ...d,
       investmentCurrentValue: value == null || value === "" ? null : Number(value),
     }), "Investment current value updated"),
+    setInvestmentBaselineDate: (date) => setData(d => ({
+      ...d,
+      investmentBaselineDate: date || todayISO(),
+    }), "Investment tracking start date updated"),
     addPaycheckItem: (item) => setData(d => ({
       ...d,
       paycheckItems: [...(d.paycheckItems || []), item],
