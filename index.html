@@ -13,7 +13,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   html { font-size: 18px; }
   * { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -67,21 +66,6 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 const STORAGE_KEY = "meridian_money_data_v5";
 const ACTIVE_TAB_KEY = "meridian_money_active_tab";
-const SUPABASE_URL = "https://exvstdoaytddxcsqukff.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_srJu9lZgLEZoFQaTYXiKDA_Hd6185js";
-const AUTH_REDIRECT_URL = "https://michealsizemore1.github.io/chatgpt-michael-cynthia-money/";
-const supabaseClient = window.supabase
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: location.protocol !== "file:",
-        storage: window.sessionStorage,
-        // Avoid a stale browser-tab lock leaving sign-in stuck on "Please wait".
-        lock: async (_name, _acquireTimeout, operation) => await operation(),
-      },
-    })
-  : null;
 const VALID_TABS = ["dashboard", "budgets", "transactions", "subscriptions", "cashflow", "goals", "accounts", "ai", "settings"];
 
 const INVESTMENT_CATEGORY_META = {
@@ -4488,29 +4472,7 @@ function buildFinancialContext(data, derived) {
 }
 
 async function callClaude({ model, system, messages }) {
-  const sessionResult = await supabaseClient.auth.getSession();
-  const accessToken = sessionResult?.data?.session?.access_token;
-  if (!accessToken) throw new Error("Please sign in again before using Budget AI.");
-
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/budget-ai`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "apikey": SUPABASE_PUBLISHABLE_KEY,
-      "authorization": `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ model, max_tokens: 1024, system, messages }),
-  });
-  if (!res.ok) {
-    let detail = "";
-    try { const j = await res.json(); detail = j.error || j.message || JSON.stringify(j); } catch (e) {}
-    throw new Error(`Budget AI error (${res.status}): ${detail || res.statusText}`);
-  }
-  const json = await res.json();
-  const sources = Array.isArray(json.sources) && json.sources.length
-    ? "\n\nSources:\n" + json.sources.map(s => `• ${s.title || s.url}: ${s.url}`).join("\n")
-    : "";
-  return (json.text || "(no response)") + sources;
+  throw new Error("External Budget AI is temporarily disconnected. The local subscription scan remains available.");
 }
 
 function isSubscriptionScanIntent(msg) {
@@ -4656,15 +4618,15 @@ function AIAssistant({ data, actions, derived }) {
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm">
-            <span className="font-medium text-slate-700">Secure AI connection: </span>
-            <span className="text-emerald-600 font-medium">Supabase protected</span>
+            <span className="font-medium text-slate-700">External AI connection: </span>
+            <span className="text-amber-600 font-medium">Temporarily disconnected</span>
           </div>
           <select className={inputClass + " max-w-[260px]"} value={model} onChange={e => changeModel(e.target.value)}>
             {ANTHROPIC_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2">
-          Your Anthropic key stays inside Supabase. Budget details needed to answer your question are sent securely to Claude; web search is used only when your question needs outside or current information.
+          Your budget remains stored locally in this browser. The built-in subscription scan still works, but outside AI and web research will remain unavailable until you connect a new secure provider.
         </p>
       </Card>
 
@@ -4933,7 +4895,7 @@ function Settings({ data, actions }) {
 
       <Card className="p-5">
         <h3 className="font-semibold text-slate-700">🔒 Household Privacy</h3>
-        <p className="text-sm text-slate-500 mt-1">These controls change what is visible on this device. They are not a replacement for Supabase authentication later.</p>
+        <p className="text-sm text-slate-500 mt-1">These controls change what is visible on this device. Use a device password and regular budget backups to protect locally stored information.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <Field label="Current view">
             <select className={inputClass} value={(data.privacyPrefs || {}).viewer || "Household"} onChange={e => actions.setPrivacyPrefs({ viewer: e.target.value })}>
@@ -5016,136 +4978,6 @@ function Settings({ data, actions }) {
   );
 }
 
-/* ============================== SUPABASE AUTHENTICATION ============================== */
-
-function AuthScreen() {
-  const [mode, setMode] = useState("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!supabaseClient) {
-      setError("The secure sign-in library could not load. Check your internet connection and refresh.");
-      return;
-    }
-    setBusy(true); setError(""); setMessage("");
-    try {
-      const authRequest = mode === "signup"
-        ? supabaseClient.auth.signUp({
-            email,
-            password,
-            options: { emailRedirectTo: AUTH_REDIRECT_URL },
-          })
-        : supabaseClient.auth.signInWithPassword({ email, password });
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Sign-in timed out. Close other open budget tabs, check your connection, and try again.")), 15000)
-      );
-      const result = await Promise.race([authRequest, timeout]);
-      if (result.error) {
-        setError(result.error.message);
-        return;
-      }
-      if (mode === "signup" && !result.data.session) {
-        setMessage("Check your email, confirm your account, then return here to sign in.");
-      }
-    } catch (authError) {
-      setError(authError?.message || "The secure sign-in service could not be reached.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 to-teal-400 flex items-center justify-center font-extrabold text-white text-lg shadow-lg">M&amp;C</div>
-          <h1 className="text-2xl font-bold text-white mt-4">Michael &amp; Cynthia&apos;s Money</h1>
-          <p className="text-sm text-slate-400 mt-1">Secure household budget synchronization</p>
-        </div>
-        <Card className="p-6">
-          <div className="grid grid-cols-2 gap-1 bg-slate-100 rounded-lg p-1 mb-5">
-            <button onClick={() => { setMode("signin"); setError(""); setMessage(""); }} className={"py-2 rounded-md text-sm font-medium " + (mode === "signin" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}>Sign In</button>
-            <button onClick={() => { setMode("signup"); setError(""); setMessage(""); }} className={"py-2 rounded-md text-sm font-medium " + (mode === "signup" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}>Create Account</button>
-          </div>
-          <form onSubmit={submit}>
-            <Field label="Email">
-              <input type="email" autoComplete="email" className={inputClass} value={email} onChange={e => setEmail(e.target.value)} required />
-            </Field>
-            <Field label="Password">
-              <input type="password" minLength="8" autoComplete={mode === "signin" ? "current-password" : "new-password"} className={inputClass} value={password} onChange={e => setPassword(e.target.value)} required />
-            </Field>
-            {error && <p className="text-sm text-rose-600 mb-3">{error}</p>}
-            {message && <p className="text-sm text-emerald-600 mb-3">{message}</p>}
-            <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
-            </Button>
-          </form>
-          <p className="text-xs text-slate-400 text-center mt-4">Your financial records are protected by your account and database access policies.</p>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-function CloudRoot() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [startupError, setStartupError] = useState("");
-
-  useEffect(() => {
-    if (!supabaseClient) { setLoading(false); return; }
-    let active = true;
-    const timeout = setTimeout(() => {
-      if (!active) return;
-      setStartupError("The secure connection took too long. You can still open the sign-in screen and try again.");
-      setLoading(false);
-    }, 6000);
-    supabaseClient.auth.getSession().then(({ data, error }) => {
-      if (!active) return;
-      clearTimeout(timeout);
-      if (error) setStartupError(error.message || "Could not restore your sign-in.");
-      setSession(data?.session || null);
-      setLoading(false);
-    }).catch(error => {
-      if (!active) return;
-      clearTimeout(timeout);
-      setStartupError(error?.message || "Could not connect to the secure budget service.");
-      setLoading(false);
-    });
-    const { data: listener } = supabaseClient.auth.onAuthStateChange((_event, nextSession) => {
-      if (!active) return;
-      clearTimeout(timeout);
-      setSession(nextSession);
-      setLoading(false);
-    });
-    return () => {
-      active = false;
-      clearTimeout(timeout);
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  if (loading) {
-    return <div className="min-h-screen bg-slate-950 text-white grid place-items-center"><div className="text-sm text-slate-300">Opening your secure budget…</div></div>;
-  }
-  if (!session) return (
-    <>
-      {startupError && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-xl rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900 shadow-lg">
-          {startupError}
-        </div>
-      )}
-      <AuthScreen />
-    </>
-  );
-  return <App session={session} onSignOut={() => supabaseClient.auth.signOut()} />;
-}
-
 /* ============================== APP ROOT ============================== */
 
 const TAB_LABELS = {
@@ -5154,7 +4986,7 @@ const TAB_LABELS = {
   ai: "AI Assistant", settings: "Settings",
 };
 
-function App({ session, onSignOut }) {
+function App() {
   const [data, rawSetData] = useState(loadData);
   const undoStack = useRef([]);
   const [undoCount, setUndoCount] = useState(0);
@@ -5165,7 +4997,6 @@ function App({ session, onSignOut }) {
     } catch (e) { return "dashboard"; }
   });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [cloud, setCloud] = useState({ id: null, ready: false, status: "Connecting…", updatedAt: null, error: "" });
 
   const setData = (updater, label) => {
     rawSetData(previous => {
@@ -5200,62 +5031,6 @@ function App({ session, onSignOut }) {
 
   useEffect(() => { saveData(data); }, [data]);
   useEffect(() => { try { localStorage.setItem(ACTIVE_TAB_KEY, tab); } catch (e) {} }, [tab]);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function connectCloudBudget() {
-      setCloud({ id: null, ready: false, status: "Connecting…", updatedAt: null, error: "" });
-      const { data: documents, error: loadError } = await supabaseClient
-        .from("budget_documents")
-        .select("id,data,version,updated_at")
-        .order("updated_at", { ascending: false })
-        .limit(1);
-      if (cancelled) return;
-      if (loadError) {
-        setCloud({ id: null, ready: false, status: "Cloud unavailable", updatedAt: null, error: loadError.message });
-        return;
-      }
-
-      let document = documents && documents[0];
-      if (!document) {
-        const { data: created, error: createError } = await supabaseClient
-          .from("budget_documents")
-          .insert({ owner_id: session.user.id, data, name: "Michael & Cynthia Money" })
-          .select("id,data,version,updated_at")
-          .single();
-        if (cancelled) return;
-        if (createError) {
-          setCloud({ id: null, ready: false, status: "Cloud unavailable", updatedAt: null, error: createError.message });
-          return;
-        }
-        document = created;
-      } else {
-        rawSetData(normalizeBudgetData(document.data || {}));
-      }
-      setCloud({ id: document.id, ready: true, status: "Synced", updatedAt: document.updated_at, error: "" });
-    }
-    connectCloudBudget();
-    return () => { cancelled = true; };
-  }, [session.user.id]);
-
-  useEffect(() => {
-    if (!cloud.ready || !cloud.id) return;
-    setCloud(c => ({ ...c, status: "Saving…" }));
-    const timer = setTimeout(async () => {
-      const { data: saved, error } = await supabaseClient
-        .from("budget_documents")
-        .update({ data, version: Date.now(), updated_at: new Date().toISOString() })
-        .eq("id", cloud.id)
-        .select("updated_at")
-        .single();
-      if (error) {
-        setCloud(c => ({ ...c, status: "Save failed", error: error.message }));
-      } else {
-        setCloud(c => ({ ...c, status: "Synced", updatedAt: saved.updated_at, error: "" }));
-      }
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [data, cloud.id, cloud.ready]);
 
   const viewer = (data.privacyPrefs || {}).viewer || "Household";
   const visibleData = viewer === "Household"
@@ -5576,21 +5351,14 @@ function App({ session, onSignOut }) {
           <button onClick={() => setMobileMenuOpen(true)} className="text-slate-600 text-2xl leading-none px-1" aria-label="Open menu">☰</button>
           <div className="font-semibold text-slate-800 truncate flex-1">{TAB_LABELS[tab] || "Menu"}</div>
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm px-2.5 py-1 flex items-center gap-2 max-w-full">
-            <span className={"w-1.5 h-1.5 rounded-full shrink-0 " + (cloud.status === "Synced" ? "bg-emerald-500" : cloud.error ? "bg-rose-500" : "bg-amber-400")}></span>
-            <div className="min-w-0">
-              <div className="text-[10px] leading-tight font-medium text-slate-700 truncate">{cloud.status}</div>
-            </div>
-            <button onClick={onSignOut} className="text-[10px] font-medium text-indigo-600 shrink-0">Sign out</button>
+            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500"></span>
+            <div className="text-[10px] leading-tight font-medium text-slate-700 truncate">Saved locally</div>
           </div>
         </div>
         <main className="flex-1 overflow-y-auto relative">
-          <div className="hidden md:flex absolute top-6 right-8 z-20 bg-white border border-slate-200 rounded-lg shadow-sm px-2.5 py-1 items-center gap-2 max-w-[260px]">
-            <span className={"w-1.5 h-1.5 rounded-full shrink-0 " + (cloud.status === "Synced" ? "bg-emerald-500" : cloud.error ? "bg-rose-500" : "bg-amber-400")}></span>
-            <div className="min-w-0">
-              <div className="text-[10px] leading-tight font-medium text-slate-700 truncate">{cloud.status}</div>
-              <div className="text-[9px] leading-tight text-slate-400 truncate">{cloud.error || session.user.email}</div>
-            </div>
-            <button onClick={onSignOut} className="text-[10px] font-medium text-indigo-600 shrink-0">Sign out</button>
+          <div className="hidden md:flex absolute top-6 right-8 z-20 bg-white border border-slate-200 rounded-lg shadow-sm px-2.5 py-1 items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-emerald-500"></span>
+            <div className="text-[10px] leading-tight font-medium text-slate-700">Saved locally</div>
           </div>
           {tab === "dashboard" && <Dashboard data={visibleData} derived={derived} actions={actions} />}
           {tab === "budgets" && <Budgets data={visibleData} actions={actions} derived={derived} />}
@@ -5615,7 +5383,7 @@ function App({ session, onSignOut }) {
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<CloudRoot />);
+root.render(<App />);
 </script>
 </body>
 </html>
